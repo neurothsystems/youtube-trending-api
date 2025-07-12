@@ -114,47 +114,61 @@ class YouTubeHandler(http.server.BaseHTTPRequestHandler):
         self.send_json_response(data)
     
     def send_config_test(self):
-        """Test configuration"""
         try:
-            config = configparser.ConfigParser()
-            config_exists = os.path.exists('config.ini')
+            # Check environment variable first (production)
+            api_key = os.getenv('YOUTUBE_API_KEY')
+        
+            if api_key:
+                key_status = "✅ OK (Environment Variable)"
+                api_key_length = len(api_key)
+                config_exists = False  # Not needed in production
+            else:
+                # Fall back to config.ini (local development)
+                config = configparser.ConfigParser()
+                config_exists = os.path.exists('config.ini')
             
             if config_exists:
                 config.read('config.ini')
                 api_key = config.get('API', 'api_key', fallback='NICHT_GEFUNDEN')
-                key_status = "✅ OK" if api_key != 'NICHT_GEFUNDEN' and len(api_key) > 10 else "❌ FEHLER"
+                key_status = "✅ OK (config.ini)" if api_key != 'NICHT_GEFUNDEN' and len(api_key) > 10 else "❌ FEHLER"
+                api_key_length = len(api_key) if api_key != 'NICHT_GEFUNDEN' else 0
             else:
                 api_key = "NICHT_GEFUNDEN"
                 key_status = "❌ config.ini nicht gefunden"
-            
+                api_key_length = 0
+        
             data = {
-                "config_file_exists": config_exists,
+                "config_file_exists": config_exists if not os.getenv('YOUTUBE_API_KEY') else "Not needed (using env var)",
                 "api_key_status": key_status,
-                "api_key_length": len(api_key) if api_key != 'NICHT_GEFUNDEN' else 0,
+                "api_key_length": api_key_length,
+                "environment_variable_set": bool(os.getenv('YOUTUBE_API_KEY')),
                 "timestamp": datetime.now().isoformat()
             }
             
-            if not config_exists:
-                data["help"] = "Erstellen Sie config.ini mit Ihrem YouTube API Key"
-                
         except Exception as e:
             data = {"error": str(e), "timestamp": datetime.now().isoformat()}
-        
+    
         self.send_json_response(data)
     
     def send_youtube_test(self):
-        """Test YouTube API connection"""
         try:
-            # Import here to avoid startup errors
             from googleapiclient.discovery import build
-            
-            config = configparser.ConfigParser()
-            config.read('config.ini')
-            api_key = config.get('API', 'api_key')
-            
+        
+            # Check environment variable first (production)
+            api_key = os.getenv('YOUTUBE_API_KEY')
+        
+            # Fall back to config.ini (local development)
+            if not api_key:
+                config = configparser.ConfigParser()
+                if os.path.exists('config.ini'):
+                    config.read('config.ini')
+                    api_key = config.get('API', 'api_key', fallback=None)
+        
+            if not api_key:
+                raise ValueError("YouTube API Key nicht gefunden in Environment Variable oder config.ini")
+        
             youtube = build('youtube', 'v3', developerKey=api_key)
-            
-            # Simple test request
+        
             request = youtube.search().list(
                 q='test',
                 part='snippet',
@@ -162,22 +176,23 @@ class YouTubeHandler(http.server.BaseHTTPRequestHandler):
                 type='video'
             )
             response = request.execute()
-            
+        
             data = {
                 "youtube_api_status": "✅ FUNKTIONIERT!",
                 "test_results_found": len(response.get('items', [])),
                 "quota_used": "~1 Einheit",
+                "api_key_source": "Environment Variable" if os.getenv('YOUTUBE_API_KEY') else "config.ini",
                 "timestamp": datetime.now().isoformat()
             }
-            
+        
         except Exception as e:
             data = {
                 "youtube_api_status": "❌ FEHLER",
                 "error": str(e),
-                "help": "Prüfen Sie Ihren API-Key in config.ini",
+                "help": "Prüfen Sie Ihren API-Key in Environment Variables oder config.ini",
                 "timestamp": datetime.now().isoformat()
             }
-        
+    
         self.send_json_response(data)
     
     def send_analyze(self, query, days=2, top_count=5):
