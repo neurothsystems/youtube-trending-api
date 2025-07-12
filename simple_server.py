@@ -334,4 +334,6 @@ def start_server(port=8000):
         print(f"❌ Server-Fehler: {e}")
 
 if __name__ == "__main__":
-    start_server()
+    # Port aus Environment Variable (Render/Railway) oder 8000 (lokal)
+    port = int(os.environ.get('PORT', 8000))
+    start_server(port)
