@@ -118,7 +118,7 @@ class YouTubeHandler(http.server.BaseHTTPRequestHandler):
             # Check environment variable first (production)
             api_key = os.getenv('YOUTUBE_API_KEY')
         
-            if api_key:
+            if api_key and len(api_key) > 10:
                 key_status = "✅ OK (Environment Variable)"
                 api_key_length = len(api_key)
                 config_exists = False  # Not needed in production
@@ -202,12 +202,28 @@ class YouTubeHandler(http.server.BaseHTTPRequestHandler):
             from googleapiclient.discovery import build
             import isodate
             
-            # Load config
-            config = configparser.ConfigParser()
-            config.read('config.ini')
-            api_key = config.get('API', 'api_key')
-            engagement_factor = config.getfloat('TRENDING', 'engagement_factor', fallback=10.0)
-            freshness_exponent = config.getfloat('TRENDING', 'freshness_exponent', fallback=1.3)
+            # Load API key from environment variable first (production)
+            api_key = os.getenv('YOUTUBE_API_KEY')
+
+            # Fall back to config.ini (local development)  
+            if not api_key:
+                config = configparser.ConfigParser()
+                if os.path.exists('config.ini'):
+                    config.read('config.ini')
+                    api_key = config.get('API', 'api_key', fallback=None)
+
+            if not api_key:
+                raise ValueError("YouTube API Key nicht gefunden!")
+            
+            # Load trending config (with defaults)
+            engagement_factor = 10.0
+            freshness_exponent = 1.3
+
+            if os.path.exists('config.ini'):
+                config = configparser.ConfigParser()
+                config.read('config.ini')
+                engagement_factor = config.getfloat('TRENDING', 'engagement_factor', fallback=10.0)
+                freshness_exponent = config.getfloat('TRENDING', 'freshness_exponent', fallback=1.3)
             
             # Build YouTube service
             youtube = build('youtube', 'v3', developerKey=api_key)
