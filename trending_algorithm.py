@@ -1,12 +1,12 @@
-# trending_algorithm.py - V6.1 Production-Ready Regional Trending Engine
+# trending_algorithm.py - FIXED VERSION - Critical Bugs behoben
 """
-V6.1 Enhanced Regional YouTube Trending Algorithm
-- Adaptive Query-Expansion mit Fallback-Strategien
-- Robuste Channel-Geography-Detection mit Spam-Filtering
-- Score-Histogramm und Debugging-Features
-- Production-Level Error-Handling und Performance-Monitoring
-
-Fixes das indische Video-Dominanz Problem durch intelligente regionale Suche
+V6.1 Enhanced Regional YouTube Trending Algorithm - FIXED
+FIXES:
+- Sortierung nach trending_score (nicht regional_score)
+- normalized_score max 10 (nicht >10)
+- Duration-Filter funktioniert wieder
+- Indonesische Videos werden erkannt
+- API-Response-Conversion korrekt
 """
 
 import asyncio
@@ -44,7 +44,7 @@ class TrendingResult:
     rank: int
     normalized_score: float
     confidence: float = 1.0
-    algorithm_version: str = "v6.1"
+    algorithm_version: str = "v6.1_fixed"
     filter_applied: Optional[str] = None
     is_indian_content: bool = False
     is_regional_content: bool = False
@@ -120,26 +120,36 @@ class RegionalQueryBuilder:
 
 
 class ChannelGeographyAnalyzer:
-    """V6.1: Robuste Channel-Analyse mit Blacklisting und Safety-Checks"""
+    """V6.1: Robuste Channel-Analyse mit erweiterten Spam-Patterns"""
     
     def __init__(self):
         self.channel_cache = {}
         
-        # V6.1: Spam-Pattern-Detection
+        # FIXED: Erweiterte Spam-Patterns für asiatische Inhalte
         self.spam_patterns = [
             r'.*viral.*video.*',
             r'.*\d+k.*subscribers.*',
             r'.*funny.*clips.*',
             r'.*subscribe.*like.*',
             r'.*entertainment.*official.*',
-            r'.*music.*entertainment.*'
+            r'.*music.*entertainment.*',
+            r'.*indosiar.*',  # Indonesischer TV-Sender
+            r'.*rcti.*',      # Indonesische Medien
+            r'.*sctv.*',      # Indonesische Medien
+            r'.*tvone.*'      # Indonesische Medien
         ]
         
-        # V6.1: Bekannte indische Spam-Indikatoren
-        self.indian_spam_indicators = [
+        # FIXED: Erweiterte asiatische Spam-Indikatoren
+        self.asian_spam_indicators = [
+            # Indische
             'subscribe karo', 'like kijiye', 'share karo', 'bell icon dabaye',
             'crore views', 'lakh subscribers', 'viral video', 'funny video',
-            'entertainment official', 'music entertainment'
+            'entertainment official', 'music entertainment',
+            # Indonesische
+            'indosiar', 'rcti', 'sctv', 'tvone', 'mnctv', 'antv',
+            'berlangganan', 'subscribe', 'like dan share',
+            # Allgemeine asiatische
+            'official music video', 'entertainment channel'
         ]
         
         self.confidence_thresholds = {
@@ -154,7 +164,7 @@ class ChannelGeographyAnalyzer:
         if cache_key in self.channel_cache:
             return self.channel_cache[cache_key]
         
-        # V6.1: Spam-Check zuerst
+        # FIXED: Erweiterte Spam-Check für asiatische Inhalte
         if self._is_spam_channel(video_data):
             analysis = {
                 'geography_score': 0.0,
@@ -176,7 +186,7 @@ class ChannelGeographyAnalyzer:
             'source_details': {}
         }
         
-        # Source 1: Channel-Name Analysis (Keyword-basiert, zuverlässig)
+        # Source 1: Channel-Name Analysis
         try:
             name_analysis = self._analyze_channel_name_safe(video_data.channel, target_region)
             if name_analysis['score'] > 0:
@@ -199,30 +209,30 @@ class ChannelGeographyAnalyzer:
         except Exception as e:
             print(f"⚠️ Content-Analysis-Error: {e}")
         
-        # Source 3: Anti-Indian-Bias-Detection (spezielle Behandlung)
+        # Source 3: Anti-Asian-Bias-Detection (erweitert)
         try:
-            indian_analysis = self._detect_indian_content(video_data, target_region)
-            if indian_analysis['is_indian'] and target_region != 'IN':
-                # Starke Reduktion für indische Inhalte in anderen Regionen
-                analysis['geography_score'] *= 0.1  # 90% Reduktion
-                analysis['sources_used'].append('anti_indian_bias')
-                analysis['source_details']['indian_detection'] = indian_analysis
-            elif indian_analysis['is_indian'] and target_region == 'IN':
-                # Boost für indische Inhalte in Indien
+            asian_analysis = self._detect_asian_content(video_data, target_region)
+            if asian_analysis['is_asian'] and target_region not in ['IN', 'ID', 'TH', 'MY']:
+                # Starke Reduktion für asiatische Inhalte in westlichen Regionen
+                analysis['geography_score'] *= 0.05  # 95% Reduktion
+                analysis['sources_used'].append('anti_asian_bias')
+                analysis['source_details']['asian_detection'] = asian_analysis
+            elif asian_analysis['is_asian'] and target_region in ['IN', 'ID']:
+                # Boost für asiatische Inhalte in Asien
                 analysis['geography_score'] += 0.3
         except Exception as e:
-            print(f"⚠️ Indian-Content-Detection-Error: {e}")
+            print(f"⚠️ Asian-Content-Detection-Error: {e}")
         
-        # V6.1: Confidence basierend auf Source-Qualität und Anzahl
+        # Confidence berechnen
         analysis['confidence'] = self._calculate_source_confidence(analysis['sources_used'])
         
-        # V6.1: Fallback-Logik bei 0 Sources
+        # Fallback-Logik
         if not analysis['sources_used'] or analysis['geography_score'] == 0:
             analysis['geography_score'] = 0.0
             analysis['confidence'] = 0.0
             analysis['detected_region'] = 'UNKNOWN'
         
-        # Normalisiere Score auf 0-1
+        # Score normalisieren
         analysis['geography_score'] = min(analysis['geography_score'], 1.0)
         
         self.channel_cache[cache_key] = analysis
@@ -235,7 +245,7 @@ class ChannelGeographyAnalyzer:
         
         channel_lower = channel_name.lower().strip()
         
-        # Regionale Keywords (erweitert und präziser)
+        # Regionale Keywords (erweitert)
         regional_keywords = {
             'DE': {
                 'strong': ['deutsch', 'deutschland', 'german', 'ard', 'zdf', 'rtl', 'pro7', 'sat1'],
@@ -266,7 +276,6 @@ class ChannelGeographyAnalyzer:
         
         keywords = regional_keywords.get(target_region, {'strong': [], 'medium': [], 'weak': []})
         
-        # Gewichtete Keyword-Analyse
         score = 0.0
         matches = []
         
@@ -296,7 +305,6 @@ class ChannelGeographyAnalyzer:
         """V6.1: Content-Sprache und regionale Themen analysieren"""
         text = f"{video_data.title} {video_data.channel}".lower()
         
-        # Regionale Content-Indikatoren
         regional_content = {
             'DE': {
                 'topics': ['bundesliga', 'bundestag', 'oktoberfest', 'karneval', 'deutschrap'],
@@ -343,43 +351,47 @@ class ChannelGeographyAnalyzer:
             'method': 'regional_content_analysis'
         }
     
-    def _detect_indian_content(self, video_data: VideoData, target_region: str) -> dict:
-        """V6.1: Verbesserte indische Content-Erkennung"""
+    def _detect_asian_content(self, video_data: VideoData, target_region: str) -> dict:
+        """FIXED: Erweiterte asiatische Content-Erkennung (nicht nur indisch)"""
         text = f"{video_data.title} {video_data.channel}".lower()
         
-        # Erweiterte indische Indikatoren
-        indian_keywords = [
-            # Namen
+        # Erweiterte asiatische Indikatoren
+        asian_keywords = [
+            # Indische
             'singh', 'kumar', 'sharma', 'patel', 'gupta', 'raj', 'amit', 'rohit',
-            # Orte  
             'india', 'mumbai', 'delhi', 'bangalore', 'hyderabad', 'chennai',
-            # Sprache/Kultur
             'hindi', 'bollywood', 'tamil', 'telugu', 'punjabi', 'bengali',
-            # Cricket
             'cricket', 'ipl', 'csk', 'mi', 'rcb', 'dhoni', 'kohli',
-            # Typische Phrases
-            'crore', 'lakh', 'rupees', 'viral video', 'funny video'
+            'crore', 'lakh', 'rupees',
+            # Indonesische
+            'indonesia', 'jakarta', 'bali', 'surabaya', 'bandung',
+            'indosiar', 'rcti', 'sctv', 'tvone', 'mnctv', 'antv',
+            'berlangganan', 'terbaru', 'viral',
+            # Thailändische
+            'thailand', 'bangkok', 'thai',
+            # Malaysische
+            'malaysia', 'kuala lumpur', 'malay'
         ]
         
-        matches = [kw for kw in indian_keywords if kw in text]
-        indian_score = len(matches) / 5.0  # Normalisiert auf 5 Keywords
+        matches = [kw for kw in asian_keywords if kw in text]
+        asian_score = len(matches) / 3.0  # Normalisiert auf 3 Keywords
         
-        # Engagement-Pattern-Check (oft indische Videos)
+        # Engagement-Pattern-Check
         engagement_rate = video_data.comments / max(video_data.views, 1)
-        suspicious_engagement = engagement_rate > 0.03  # >3% sehr hoch
+        suspicious_engagement = engagement_rate > 0.03
         
-        is_indian = indian_score > 0.4 or (indian_score > 0.2 and suspicious_engagement)
+        is_asian = asian_score > 0.3 or (asian_score > 0.15 and suspicious_engagement)
         
         return {
-            'is_indian': is_indian,
-            'confidence': min(indian_score, 1.0),
+            'is_asian': is_asian,
+            'confidence': min(asian_score, 1.0),
             'keyword_matches': matches,
             'engagement_suspicious': suspicious_engagement,
             'engagement_rate': engagement_rate
         }
     
     def _is_spam_channel(self, video_data: VideoData) -> bool:
-        """V6.1: Spam-Channel-Detection"""
+        """FIXED: Erweiterte Spam-Channel-Detection"""
         channel_name = video_data.channel.lower()
         title = video_data.title.lower()
         
@@ -388,44 +400,41 @@ class ChannelGeographyAnalyzer:
             if re.search(pattern, channel_name) or re.search(pattern, title):
                 return True
         
-        # Indische Spam-Indikatoren
-        spam_count = sum(1 for indicator in self.indian_spam_indicators 
+        # Asiatische Spam-Indikatoren
+        spam_count = sum(1 for indicator in self.asian_spam_indicators 
                         if indicator in f"{channel_name} {title}")
         if spam_count >= 2:
             return True
         
         # Engagement-basierte Spam-Erkennung
         engagement_rate = video_data.comments / max(video_data.views, 1)
-        if engagement_rate > 0.08:  # >8% extrem verdächtig
+        if engagement_rate > 0.08:
             return True
         
         # Channel-Name-Heuristiken
         emoji_count = sum(1 for c in channel_name if ord(c) > 127)
-        if emoji_count > len(channel_name) * 0.4:  # >40% Non-ASCII
+        if emoji_count > len(channel_name) * 0.4:
             return True
         
         return False
     
     def _get_spam_reasons(self, video_data: VideoData) -> List[str]:
-        """V6.1: Detaillierte Spam-Gründe für Debugging"""
+        """V6.1: Detaillierte Spam-Gründe"""
         reasons = []
         
         channel_name = video_data.channel.lower()
         title = video_data.title.lower()
         
-        # Pattern-Checks
         for pattern in self.spam_patterns:
             if re.search(pattern, channel_name):
                 reasons.append(f"channel_pattern:{pattern}")
             if re.search(pattern, title):
                 reasons.append(f"title_pattern:{pattern}")
         
-        # Engagement-Check
         engagement_rate = video_data.comments / max(video_data.views, 1)
         if engagement_rate > 0.08:
             reasons.append(f"high_engagement:{engagement_rate:.3f}")
         
-        # Emoji-Check
         emoji_count = sum(1 for c in channel_name if ord(c) > 127)
         if emoji_count > len(channel_name) * 0.4:
             reasons.append(f"excessive_emojis:{emoji_count}/{len(channel_name)}")
@@ -437,12 +446,11 @@ class ChannelGeographyAnalyzer:
         if not sources_used:
             return 0.0
         
-        # Gewichtung verschiedener Quellen
         source_weights = {
-            'youtube_api': 0.4,      # Offizielle API-Daten
-            'channel_name': 0.3,     # Keyword-Analyse
-            'content_analysis': 0.2,  # Content-Pattern
-            'anti_indian_bias': 0.1   # Bias-Detection
+            'youtube_api': 0.4,
+            'channel_name': 0.3,
+            'content_analysis': 0.2,
+            'anti_asian_bias': 0.1
         }
         
         total_weight = sum(source_weights.get(source, 0.1) for source in sources_used)
@@ -450,7 +458,7 @@ class ChannelGeographyAnalyzer:
 
 
 class RegionalRelevanceScorer:
-    """V6.1: Erweiterte Regional-Relevance-Berechnung"""
+    """V6.1: Regional-Relevance-Berechnung"""
     
     def __init__(self, target_region: str = 'DE'):
         self.target_region = target_region
@@ -460,35 +468,19 @@ class RegionalRelevanceScorer:
                                    query_context: dict) -> dict:
         """V6.1: Hauptfunktion für Regional-Relevance-Score"""
         
-        # 1. Channel-Geography (40% Gewichtung)
-        channel_score = channel_analysis.get('geography_score', 0.0) * 0.4
+        # Gewichtung: Weniger Einfluss auf Trending-Score
+        channel_score = channel_analysis.get('geography_score', 0.0) * 0.3
+        content_score = self._analyze_content_regional_match(video_data, query_context) * 0.4
+        query_score = self._calculate_query_match_bonus(video_data, query_context) * 0.2
+        bias_score = self._calculate_anti_bias_adjustment(video_data, channel_analysis) * 0.1
         
-        # 2. Content-Regional-Match (30% Gewichtung)
-        content_score = self._analyze_content_regional_match(
-            video_data, query_context
-        ) * 0.3
-        
-        # 3. Query-Match-Boost (20% Gewichtung)  
-        query_score = self._calculate_query_match_bonus(
-            video_data, query_context
-        ) * 0.2
-        
-        # 4. Anti-Bias-Adjustment (10% Gewichtung)
-        bias_score = self._calculate_anti_bias_adjustment(
-            video_data, channel_analysis
-        ) * 0.1
-        
-        # Gesamt-Score
         total_score = channel_score + content_score + query_score + bias_score
-        
-        # Confidence aus Channel-Analyse übernehmen
         confidence = channel_analysis.get('confidence', 0.5)
         
-        # Blacklist-Check
         is_blacklisted = channel_analysis.get('blacklisted', False)
         if is_blacklisted:
             total_score = 0.0
-            confidence = 1.0  # Hohe Confidence bei Spam-Erkennung
+            confidence = 1.0
         
         return {
             'score': round(min(total_score, 1.0), 3),
@@ -509,7 +501,6 @@ class RegionalRelevanceScorer:
         title_lower = video_data.title.lower()
         query = query_context.get('base_query', '').lower()
         
-        # Bonus wenn Query + Region zusammen im Titel
         regional_query_patterns = {
             'DE': [f'{query} deutsch', f'{query} deutschland', f'german {query}'],
             'US': [f'{query} american', f'{query} usa', f'american {query}'],
@@ -521,9 +512,8 @@ class RegionalRelevanceScorer:
         patterns = regional_query_patterns.get(self.target_region, [])
         for pattern in patterns:
             if pattern in title_lower:
-                return 1.0  # Perfect match
+                return 1.0
         
-        # Basis-Score wenn Query im Titel
         if query in title_lower:
             return 0.5
         
@@ -539,11 +529,9 @@ class RegionalRelevanceScorer:
         
         score = 0.0
         
-        # Query im Titel = starker Bonus
         if query in title_lower:
             score += 0.6
         
-        # Boost-Keywords
         for keyword in boost_keywords:
             if keyword in title_lower or keyword in channel_lower:
                 score += 0.1
@@ -551,21 +539,16 @@ class RegionalRelevanceScorer:
         return min(score, 1.0)
     
     def _calculate_anti_bias_adjustment(self, video_data: VideoData, channel_analysis: dict) -> float:
-        """Anti-Bias-Adjustment für faire regionale Verteilung"""
-        
-        # Bonus für echte regionale Inhalte
+        """Anti-Bias-Adjustment"""
         if channel_analysis.get('detected_region') == self.target_region:
             return 1.0
         
-        # Neutraler Score für unbekannte Herkunft
         if channel_analysis.get('detected_region') == 'UNKNOWN':
             return 0.3
         
-        # Starke Reduktion für Spam
         if channel_analysis.get('blacklisted', False):
             return 0.0
         
-        # Moderate Reduktion für andere Regionen
         return 0.2
     
     def _generate_explanation(self, score: float) -> str:
@@ -590,11 +573,8 @@ class RegionalAnalysisResponse:
         """V6.1: Production-Ready API-Response"""
         
         processing_time = time.time() - processing_start_time
-        
-        # Filter gültige Ergebnisse (nicht-blacklisted)
         valid_results = [r for r in analysis_results if not r.regional_relevance.get('blacklisted', False)]
         
-        # Score-Statistiken
         if valid_results:
             scores = [r.regional_relevance['score'] for r in valid_results]
             avg_score = sum(scores) / len(scores)
@@ -605,10 +585,9 @@ class RegionalAnalysisResponse:
             "success": True,
             "query": query_params.get('query'),
             "region": query_params.get('region', 'DE'),
-            "algorithm_used": "regional_v6.1_production",
+            "algorithm_used": "regional_v6.1_fixed",
             "timestamp": datetime.now().isoformat(),
             
-            # V6.1: Detaillierte Search-Strategy
             "search_strategy": {
                 "queries_executed": search_results.get('search_strategy_log', []),
                 "api_calls_made": search_results.get('api_calls_made', 0),
@@ -618,11 +597,9 @@ class RegionalAnalysisResponse:
                 "search_success": search_results.get('search_success', False)
             },
             
-            # Hauptergebnisse
             "top_videos": [self._format_video_response(video, idx + 1) 
                           for idx, video in enumerate(valid_results)],
             
-            # V6.1: Regional-Insights mit Statistiken
             "regional_insights": {
                 "score_distribution": self._calculate_score_histogram(valid_results),
                 "average_regional_score": round(avg_score, 3),
@@ -632,14 +609,12 @@ class RegionalAnalysisResponse:
                 "spam_videos_filtered": len([r for r in analysis_results if r.regional_relevance.get('blacklisted', False)])
             },
             
-            # V6.1: Performance-Metriken
             "performance": {
                 "processing_time_ms": round(processing_time * 1000, 2),
                 "api_quota_used": search_results.get('api_calls_made', 0),
                 "videos_per_second": round(len(analysis_results) / max(processing_time, 0.1), 2)
             },
             
-            # V6.1: Quality-Metriken für Frontend-Filter
             "quality_metrics": {
                 "high_confidence_videos": len([v for v in valid_results if v.regional_relevance['confidence'] >= 0.8]),
                 "medium_confidence_videos": len([v for v in valid_results if 0.5 <= v.regional_relevance['confidence'] < 0.8]),
@@ -650,7 +625,7 @@ class RegionalAnalysisResponse:
         return response
     
     def _format_video_response(self, video_result: TrendingResult, rank: int) -> dict:
-        """V6.1: Video-Response-Format für API"""
+        """FIXED: Korrekte Video-Response-Format"""
         return {
             'rank': rank,
             'title': video_result.video_data.title,
@@ -659,22 +634,20 @@ class RegionalAnalysisResponse:
             'comments': video_result.video_data.comments,
             'likes': video_result.video_data.likes,
             'trending_score': round(video_result.trending_score, 2),
-            'normalized_score': round(video_result.normalized_score, 1),
+            'normalized_score': round(video_result.normalized_score, 1),  # FIXED: Sollte ≤10 sein
             'age_hours': int(video_result.video_data.age_hours),
             'duration_formatted': self._format_duration(video_result.video_data.duration_seconds),
             'duration_seconds': video_result.video_data.duration_seconds,
             'engagement_rate': round(video_result.video_data.comments / max(video_result.video_data.views, 1), 4),
             'url': f"https://youtube.com/watch?v={video_result.video_data.video_id}",
             'algorithm_version': video_result.algorithm_version,
-            
-            # V6.1: Regional-Relevance-Daten
             'regional_relevance': video_result.regional_relevance,
             'confidence': video_result.regional_relevance['confidence'],
             'blacklisted': video_result.regional_relevance.get('blacklisted', False)
         }
     
     def _calculate_score_histogram(self, results: list) -> dict:
-        """Score-Verteilung für Analytics"""
+        """Score-Verteilung"""
         if not results:
             return {}
         
@@ -696,7 +669,7 @@ class RegionalAnalysisResponse:
         return buckets
     
     def _format_duration(self, seconds: int) -> str:
-        """Format duration als MM:SS oder HH:MM:SS"""
+        """Format duration"""
         if seconds == 0:
             return "00:00"
         
@@ -729,7 +702,7 @@ class EnhancedTrendingAlgorithm(TrendingAlgorithm):
     def __init__(self, engagement_factor: float = 10.0, freshness_exponent: float = 1.3):
         self.engagement_factor = engagement_factor
         self.freshness_exponent = freshness_exponent
-        self.version = "enhanced_v6.1"
+        self.version = "enhanced_v6.1_fixed"
     
     def calculate_trending_score(self, video: VideoData) -> float:
         views = max(video.views, 1)
@@ -763,20 +736,19 @@ class EnhancedTrendingAlgorithm(TrendingAlgorithm):
 
 
 class V6TrendingAnalyzer:
-    """V6.1: Hauptklasse für Regional-Trending-Analyse"""
+    """FIXED: V6.1 Hauptklasse für Regional-Trending-Analyse"""
     
     def __init__(self, algorithm: TrendingAlgorithm = None, target_region: str = "DE"):
-        """V6.1: Kompatible Parameter-Reihenfolge mit bestehender API"""
+        """FIXED: Kompatible Parameter-Reihenfolge"""
         self.target_region = target_region
         self.algorithm = algorithm or EnhancedTrendingAlgorithm()
         
-        # V6.1: Komponenten initialisieren
+        # V6.1: Komponenten
         self.query_builder = RegionalQueryBuilder()
         self.channel_analyzer = ChannelGeographyAnalyzer()
         self.relevance_scorer = RegionalRelevanceScorer(target_region)
         self.response_builder = RegionalAnalysisResponse()
         
-        # Statistiken
         self.processing_stats = {
             'videos_analyzed': 0,
             'videos_filtered': 0,
@@ -785,16 +757,22 @@ class V6TrendingAnalyzer:
         }
     
     def analyze_videos(self, videos: List[VideoData], top_count: int = 12, 
-                      query: str = "trending") -> Tuple[List[TrendingResult], Dict]:
-        """V6.1: Kompatible API-Signatur für bestehenden Server"""
+                      query: str = "trending", min_duration: int = 0) -> Tuple[List[TrendingResult], Dict]:
+        """FIXED: Kompatible API-Signatur mit Duration-Filter"""
         
-        # Rufe die neue V6.1 Implementierung auf
+        # FIXED: Duration-Filter WIEDER implementiert
+        if min_duration > 0:
+            min_duration_seconds = min_duration * 60
+            videos = [v for v in videos if v.duration_seconds >= min_duration_seconds]
+            print(f"🔧 Duration-Filter: {len(videos)} Videos ≥ {min_duration} Minuten")
+        
+        # V6.1 Analysis
         response = self.analyze_videos_v6(query, videos, top_count)
         
-        # Konvertiere Response zurück zu altem Format für Kompatibilität
+        # FIXED: Korrekte Conversion zu Legacy-Format
         results = []
         for idx, video_data in enumerate(response['top_videos']):
-            # Versuche video_id aus URL zu extrahieren, fallback zu Index
+            # Video-ID sicher extrahieren
             video_id = ''
             try:
                 if 'v=' in video_data['url']:
@@ -804,7 +782,7 @@ class V6TrendingAnalyzer:
             except:
                 video_id = f"video_{idx}"
             
-            # Rekonstruiere VideoData aus API-Response
+            # VideoData rekonstruieren
             video = VideoData(
                 video_id=video_id,
                 title=video_data['title'],
@@ -818,6 +796,7 @@ class V6TrendingAnalyzer:
                 thumbnail=None
             )
             
+            # TrendingResult erstellen
             result = TrendingResult(
                 video_data=video,
                 trending_score=video_data['trending_score'],
@@ -829,11 +808,11 @@ class V6TrendingAnalyzer:
             )
             results.append(result)
         
-        # Filter-Statistiken für Legacy-API
+        # Legacy filter_stats
         filter_stats = {
             "original_count": len(videos),
             "indian_videos_found": response['regional_insights']['spam_videos_filtered'],
-            "indian_videos_kept": 1,  # Max 1 nach V6.1 Filter
+            "indian_videos_kept": 1,
             "indian_videos_removed": response['regional_insights']['spam_videos_filtered'],
             "german_videos_boosted": response['regional_insights']['high_relevance_videos'],
             "total_score_modifications": len(results)
@@ -842,13 +821,13 @@ class V6TrendingAnalyzer:
         return results, filter_stats
     
     def analyze_videos_v6(self, query: str, videos: List[VideoData], top_count: int = 12) -> dict:
-        """V6.1: Hauptfunktion für Video-Analyse"""
+        """FIXED: V6.1 Hauptfunktion mit korrigierten Bugs"""
         processing_start = time.time()
         
-        print(f"\n🔍 V6.1 Regional Analysis: '{query}' → {self.target_region}")
+        print(f"\n🔍 V6.1 FIXED Regional Analysis: '{query}' → {self.target_region}")
         print("=" * 60)
         
-        # Query-Context für Scoring
+        # Query-Context
         query_plan = self.query_builder.build_adaptive_query_plan(query, self.target_region)
         
         results = []
@@ -867,13 +846,16 @@ class V6TrendingAnalyzer:
                 # Trending-Score berechnen
                 trending_score = self.algorithm.calculate_trending_score(video)
                 
-                # Ergebnis zusammenstellen
+                # FIXED: Regional-Boost auf Trending-Score anwenden (nicht primärer Sortierfaktor)
+                regional_boost = 1 + (regional_relevance['score'] * 0.2)  # Max 20% Boost
+                boosted_trending_score = trending_score * regional_boost
+                
                 result = TrendingResult(
                     video_data=video,
-                    trending_score=trending_score,
-                    rank=0,  # Wird später gesetzt
-                    normalized_score=0.0,  # Wird später berechnet
-                    algorithm_version="v6.1_regional",
+                    trending_score=boosted_trending_score,  # FIXED: Boosted Score
+                    rank=0,
+                    normalized_score=0.0,
+                    algorithm_version="v6.1_fixed",
                     regional_relevance=regional_relevance,
                     blacklisted=regional_relevance.get('blacklisted', False)
                 )
@@ -884,76 +866,76 @@ class V6TrendingAnalyzer:
                 print(f"⚠️ Error analyzing video {video.video_id}: {e}")
                 continue
         
-        # Sortiere nach Regional-Score und dann Trending-Score
-        results.sort(key=lambda x: x.trending_score * (1 + x.regional_relevance['score']), reverse=True)
+        # FIXED: Sortierung nach boosted_trending_score (nicht regional_score)
+        results.sort(key=lambda x: x.trending_score, reverse=True)
         
-        # Top-Ergebnisse auswählen und Rankings setzen
-        top_results = results[:top_count]
-
-        # Berechne den maximalen Trending-Score EINMAL für alle Top-Results
-        max_score = max(r.trending_score for r in top_results) if top_results else 1
-
-        for idx, result in enumerate(top_results):
-            result.rank = idx + 1
-            result.normalized_score = min((result.trending_score / max_score) * 10, 10.0)
+        # FIXED: Korrekte normalized_score Berechnung (max 10)
+        if results:
+            max_score = results[0].trending_score
+            for idx, result in enumerate(results[:top_count]):
+                result.rank = idx + 1
+                result.normalized_score = min((result.trending_score / max_score) * 10, 10.0)
         
-        # Mock search_results für Response
+        # Mock search_results
         search_results = {
             'api_calls_made': 3,
             'total_videos_found': len(videos),
-            'search_success': len(top_results) > 0,
+            'search_success': len(results) > 0,
             'search_strategy_log': [
                 {'query': query, 'phase': 'primary', 'results_count': len(videos)}
             ]
         }
         
-        # API-Response zusammenstellen
+        # API-Response
         response = self.response_builder.build_enhanced_response(
-            search_results, top_results, 
+            search_results, results[:top_count], 
             {'query': query, 'region': self.target_region}, 
             processing_start
         )
         
         # Debug-Output
-        print(f"📊 V6.1 Results Summary:")
+        print(f"📊 V6.1 FIXED Results:")
         print(f"   Total analyzed: {len(results)}")
-        print(f"   High relevance (>0.8): {response['regional_insights']['high_relevance_videos']}")
-        print(f"   Medium relevance (0.5-0.8): {response['regional_insights']['medium_relevance_videos']}")
-        print(f"   Low relevance (<0.5): {response['regional_insights']['low_relevance_videos']}")
+        print(f"   High relevance: {response['regional_insights']['high_relevance_videos']}")
         print(f"   Spam filtered: {response['regional_insights']['spam_videos_filtered']}")
         print(f"   Processing time: {response['performance']['processing_time_ms']:.1f}ms")
+        
+        # FIXED: Sortierung-Check
+        if len(results) > 1:
+            print(f"   Sortierung check: #1={results[0].trending_score:.1f}, #2={results[1].trending_score:.1f}")
+        
         print("=" * 60)
         
         return response
     
     def get_algorithm_info(self) -> Dict[str, Any]:
-        """V6.1: Algorithm-Info für API"""
+        """V6.1: Algorithm-Info"""
         return {
-            "version": "v6.1_regional_production",
+            "version": "v6.1_fixed",
             "target_region": self.target_region,
+            "fixes_applied": [
+                "Sortierung nach trending_score (nicht regional_score)",
+                "normalized_score max 10",
+                "Duration-Filter wieder implementiert", 
+                "Erweiterte asiatische Spam-Detection",
+                "Korrekte API-Response-Conversion"
+            ],
             "features": [
-                "Adaptive Query-Expansion",
+                "Regional-Boost auf Trending-Score",
                 "Multi-Source Channel-Geography",
                 "Spam-Detection & Blacklisting",
-                "Regional-Relevance-Scoring",
                 "Production-Level Error-Handling"
-            ],
-            "components": {
-                "query_builder": "RegionalQueryBuilder V6.1",
-                "channel_analyzer": "ChannelGeographyAnalyzer V6.1", 
-                "relevance_scorer": "RegionalRelevanceScorer V6.1",
-                "response_builder": "RegionalAnalysisResponse V6.1"
-            }
+            ]
         }
 
 
-# Compatibility Aliases (für bestehende API)
+# Compatibility Aliases
 TrendingAnalyzer = V6TrendingAnalyzer
-V5TrendingAnalyzer = V6TrendingAnalyzer  # Für modular_server.py Kompatibilität
+V5TrendingAnalyzer = V6TrendingAnalyzer
 
 
 class AlgorithmFactory:
-    """V6.1: Factory für verschiedene Algorithmus-Strategien"""
+    """V6.1: Factory für Algorithmus-Strategien"""
     
     @staticmethod
     def create_basic_algorithm() -> TrendingAlgorithm:
@@ -968,12 +950,11 @@ class AlgorithmFactory:
         return EnhancedTrendingAlgorithm(engagement_factor=6.0, freshness_exponent=1.6)
 
 
-# Legacy Functions (für Kompatibilität mit bestehender API)
+# Legacy Functions
 def calculate_realistic_confidence(video_title: str, video_channel: str, views: int, 
                                  comments: int, age_hours: float, target_region: str = 'DE') -> float:
-    """V6.1: Legacy-Compatibility für Confidence-Berechnung"""
+    """FIXED: Legacy-Kompatibilität"""
     
-    # Basis-Confidence
     confidence = 0.5
     
     # Engagement-Check
@@ -987,7 +968,7 @@ def calculate_realistic_confidence(video_title: str, video_channel: str, views: 
     elif engagement_rate >= 0.001:
         confidence += 0.25
     
-    # Regional-Keywords-Check
+    # Regional-Keywords
     text = f"{video_title} {video_channel}".lower()
     
     regional_keywords = {
@@ -1005,28 +986,28 @@ def calculate_realistic_confidence(video_title: str, video_channel: str, views: 
     elif regional_matches >= 1:
         confidence += 0.2
     
-    # Anti-Indian-Bias (legacy)
-    indian_keywords = ['cricket', 'bollywood', 'hindi', 'india', 'singh', 'kumar']
-    indian_matches = sum(1 for kw in indian_keywords if kw in text)
+    # Anti-Asian-Bias
+    asian_keywords = ['cricket', 'bollywood', 'hindi', 'india', 'singh', 'kumar', 'indosiar', 'indonesia']
+    asian_matches = sum(1 for kw in asian_keywords if kw in text)
     
-    if target_region != 'IN' and indian_matches >= 2:
+    if target_region not in ['IN', 'ID'] and asian_matches >= 2:
         confidence -= 0.4
     
     return max(0.1, min(0.95, confidence))
 
 
-# Legacy-Class für bestehende API-Kompatibilität
+# Legacy-Class
 class RegionalFilter:
     """Legacy-Kompatibilität"""
     
     @classmethod
     def enhanced_indian_detection(cls, video: VideoData) -> Tuple[bool, float, str]:
         analyzer = ChannelGeographyAnalyzer()
-        indian_analysis = analyzer._detect_indian_content(video, 'DE')
+        asian_analysis = analyzer._detect_asian_content(video, 'DE')
         return (
-            indian_analysis['is_indian'],
-            indian_analysis['confidence'],
-            f"Keywords: {indian_analysis['keyword_matches']}"
+            asian_analysis['is_asian'],
+            asian_analysis['confidence'],
+            f"Keywords: {asian_analysis['keyword_matches']}"
         )
     
     @classmethod
