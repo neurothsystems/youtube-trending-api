@@ -1,3 +1,10 @@
-# Nur die absolut notwendigen Pakete (keine FastAPI/Pydantic Probleme!)
+# Aktualisierte minimal_requirements.txt für modulares System
+# Bestehende Dependencies (unverändert)
 google-api-python-client==2.70.0
 isodate==0.6.1
+
+# Neue Dependencies für modulares System
+openpyxl==3.1.2
+
+# Optional: Für bessere Performance
+dataclasses; python_version<"3.7"
