@@ -885,10 +885,7 @@ class V6TrendingAnalyzer:
                 continue
         
         # Sortiere nach Regional-Score und dann Trending-Score
-        results.sort(key=lambda x: (
-            x.regional_relevance['score'],  # Primär: Regional-Relevance
-            x.trending_score                # Sekundär: Trending-Score
-        ), reverse=True)
+        results.sort(key=lambda x: x.trending_score * (1 + x.regional_relevance['score']), reverse=True)
         
         # Top-Ergebnisse auswählen und Rankings setzen
         top_results = results[:top_count]
