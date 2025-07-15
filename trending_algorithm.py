@@ -889,10 +889,13 @@ class V6TrendingAnalyzer:
         
         # Top-Ergebnisse auswählen und Rankings setzen
         top_results = results[:top_count]
+
+        # Berechne den maximalen Trending-Score EINMAL für alle Top-Results
+        max_score = max(r.trending_score for r in top_results) if top_results else 1
+
         for idx, result in enumerate(top_results):
             result.rank = idx + 1
-            result.normalized_score = ((result.regional_relevance['score'] * 0.6 + 
-                                     (result.trending_score / max(results[0].trending_score, 1)) * 0.4) * 10)
+            result.normalized_score = min((result.trending_score / max_score) * 10, 10.0)
         
         # Mock search_results für Response
         search_results = {
