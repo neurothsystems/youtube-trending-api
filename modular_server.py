@@ -387,7 +387,7 @@ class ModularYouTubeHandler(http.server.BaseHTTPRequestHandler):
             analyzer = V6TrendingAnalyzer(algorithm, target_region=region)
             
             # V5.0 Enhanced Analysis (includes pre-filtering, score calculation, etc.)
-            results, filter_stats = analyzer.analyze_videos(video_data_list, top_count)
+            results, filter_stats = analyzer.analyze_videos(video_data_list, top_count, query=query)
             
             # Convert results for API response
             api_results = []
@@ -777,7 +777,7 @@ class ModularYouTubeHandler(http.server.BaseHTTPRequestHandler):
             # V5.0 Enhanced Analysis
             algorithm = self.create_algorithm('regional', region)
             analyzer = V6TrendingAnalyzer(algorithm, target_region=region)
-            results, filter_stats = analyzer.analyze_videos(video_data_list, top_count)
+            results, filter_stats = analyzer.analyze_videos(video_data_list, top_count, query=query)
             
             # Create V5.0 Enhanced CSV
             output = io.StringIO()
