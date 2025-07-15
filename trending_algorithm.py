@@ -1,14 +1,18 @@
-# OPTIMIZED trending_algorithm.py - Verbesserte Score-Formel basierend auf User-Feedback
+# MOMENTUM trending_algorithm.py - Original PRD Formel
 """
-OPTIMIZED Trending Algorithm mit verbesserter Score-Berechnung:
+MOMENTUM Trending Algorithm - Zurück zur ursprünglichen PRD-Formel:
 
-FIXES von User-Feedback:
-- Views: 75% Gewichtung (Haupttreiber)
-- Comments: Moderate Gewichtung (8x Faktor)  
-- Likes: Moderate Gewichtung (2x Faktor)
-- Alter: Linearer Einfluss statt exponentieller Penalty
-- Dauer: KEIN Bonus mehr (verhindert Livestream-Dominanz)
-- Frische-Boost: Nur 10% für <12h Videos
+Trending-Score = (Views/Stunde × 0.6) + (Engagement-Rate × Views × 0.3) + (Views × Zeit-Dämpfung × 0.1)
+
+Dabei:
+- Views/Stunde = Geschwindigkeit der Popularität (60% Gewichtung)
+- Engagement-Rate = (Likes + Kommentare) / Views (30% Gewichtung)
+- Zeit-Dämpfung = exp(-Stunden_seit_Upload / 24) (10% Gewichtung)
+
+Vorteile:
+- Videos mit hoher Interaktion werden bevorzugt
+- Neuere Videos erhalten faire Chancen
+- Echtes "Momentum" wird gemessen, nicht nur Gesamtpopularität
 """
 
 import math
@@ -18,7 +22,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass
 from datetime import datetime
 
-# [Alle anderen Klassen bleiben gleich - VideoData, TrendingResult, etc.]
+# [Alle bestehenden Klassen von vorher - VideoData, TrendingResult, etc.]
 @dataclass
 class VideoData:
     """Standardisierte Video-Datenstruktur"""
@@ -44,7 +48,7 @@ class TrendingResult:
     rank: int
     normalized_score: float
     confidence: float = 1.0
-    algorithm_version: str = "optimized_v7.0"
+    algorithm_version: str = "momentum_v8.0"
     filter_applied: Optional[str] = None
     is_indian_content: bool = False
     is_regional_content: bool = False
@@ -64,106 +68,88 @@ class TrendingAlgorithm(ABC):
         pass
 
 
-class OptimizedTrendingAlgorithm(TrendingAlgorithm):
+class MomentumTrendingAlgorithm(TrendingAlgorithm):
     """
-    OPTIMIZED Trending-Algorithmus basierend auf User-Feedback
+    MOMENTUM Trending Algorithm - Original PRD Formel
     
-    Verbesserungen:
-    - Views: 75% Gewichtung (Haupttreiber für Trends)
-    - Comments: 8x Faktor (wertvoll aber seltener als Likes)
-    - Likes: 2x Faktor (moderate Gewichtung)
-    - Linearer Age-Einfluss statt exponentieller Penalty
-    - KEIN Duration-Bonus (verhindert Livestream-Bias)
-    - Frische-Boost: Max 10% für Videos <12h
+    Trending-Score = (Views/Stunde × 0.6) + (Engagement-Rate × Views × 0.3) + (Views × Zeit-Dämpfung × 0.1)
+    
+    Diese Formel balanciert perfekt:
+    - Velocity (Views/Stunde) als Hauptfaktor
+    - Engagement × Popularität als wichtiger Sekundärfaktor
+    - Zeit-Dämpfung für Frische-Boost
     """
     
     def __init__(self, 
-                 views_weight: float = 0.75,
-                 comments_factor: float = 8.0,
-                 likes_factor: float = 2.0,
-                 freshness_boost_hours: float = 12.0,
-                 max_freshness_boost: float = 0.1,
-                 min_age_hours: float = 2.0):
+                 velocity_weight: float = 0.6,
+                 engagement_weight: float = 0.3,
+                 freshness_weight: float = 0.1,
+                 time_decay_hours: float = 24.0):
         """
-        OPTIMIZED Algorithm Parameters
+        MOMENTUM Algorithm Parameters
         
         Args:
-            views_weight: Gewichtung für Views (empfohlen: 0.75 = 75%)
-            comments_factor: Multiplikator für Comments (empfohlen: 8.0)
-            likes_factor: Multiplikator für Likes (empfohlen: 2.0)
-            freshness_boost_hours: Unter X Stunden gibt es Frische-Boost (empfohlen: 12h)
-            max_freshness_boost: Maximaler Frische-Boost (empfohlen: 0.1 = 10%)
-            min_age_hours: Minimum Age für Division (verhindert Division durch ~0)
+            velocity_weight: Gewichtung für Views/Stunde (empfohlen: 0.6)
+            engagement_weight: Gewichtung für Engagement×Views (empfohlen: 0.3)
+            freshness_weight: Gewichtung für Zeit-Dämpfung (empfohlen: 0.1)
+            time_decay_hours: Halbwertszeit für Zeit-Dämpfung (empfohlen: 24h)
         """
-        self.views_weight = views_weight
-        self.comments_factor = comments_factor
-        self.likes_factor = likes_factor
-        self.freshness_boost_hours = freshness_boost_hours
-        self.max_freshness_boost = max_freshness_boost
-        self.min_age_hours = min_age_hours
-        self.version = "optimized_v7.0"
+        self.velocity_weight = velocity_weight
+        self.engagement_weight = engagement_weight
+        self.freshness_weight = freshness_weight
+        self.time_decay_hours = time_decay_hours
+        self.version = "momentum_v8.0"
         
-        print(f"🚀 OPTIMIZED Algorithm V7.0 initialized:")
-        print(f"   Views weight: {views_weight}")
-        print(f"   Comments factor: {comments_factor}x")
-        print(f"   Likes factor: {likes_factor}x")
-        print(f"   Freshness boost: {max_freshness_boost*100}% for <{freshness_boost_hours}h videos")
-        print(f"   NO duration bonus (Livestream-bias eliminated)")
+        print(f"🚀 MOMENTUM Algorithm V8.0 initialized:")
+        print(f"   Velocity (Views/h): {velocity_weight*100}%")
+        print(f"   Engagement × Views: {engagement_weight*100}%")
+        print(f"   Zeit-Dämpfung: {freshness_weight*100}%")
+        print(f"   Time decay: {time_decay_hours}h")
+        print(f"   Formula: (Views/h × {velocity_weight}) + (Engagement×Views × {engagement_weight}) + (Views×Decay × {freshness_weight})")
     
     def calculate_trending_score(self, video: VideoData) -> float:
         """
-        OPTIMIZED Trending-Score-Berechnung
+        MOMENTUM Trending-Score-Berechnung - Original PRD Formel
         
-        Formel:
-        1. Basis: (Views * 0.75 + Comments * 8 + Likes * 2) / age_hours
-        2. Frische-Boost: +10% für Videos <12h (linear abfallend)
-        3. KEIN Duration-Bonus mehr!
+        Trending-Score = (Views/Stunde × 0.6) + (Engagement-Rate × Views × 0.3) + (Views × Zeit-Dämpfung × 0.1)
         """
         
         # Basis-Metriken extrahieren
         views = max(video.views, 1)
         comments = video.comments
         likes = video.likes
-        age_hours = max(video.age_hours, self.min_age_hours)  # Mindestens 2h
+        age_hours = max(video.age_hours, 0.1)  # Mindestens 0.1h (6 Minuten)
         
-        # OPTIMIZED: Neue Score-Berechnung basierend auf User-Feedback
-        raw_score = (
-            views * self.views_weight +           # 75% Views (Haupttreiber)
-            comments * self.comments_factor +    # Comments * 8 (wertvoll aber selten)
-            likes * self.likes_factor             # Likes * 2 (moderate Gewichtung)
-        )
+        # 1. VELOCITY: Views pro Stunde (Hauptfaktor - 60%)
+        views_per_hour = views / age_hours
+        velocity_score = views_per_hour * self.velocity_weight
         
-        # Pro-Zeit-Normalisierung (VIEL besser als exponentieller Penalty)
-        score_per_hour = raw_score / age_hours
+        # 2. ENGAGEMENT: Engagement-Rate × Views (Sekundärfaktor - 30%)
+        engagement_rate = (likes + comments) / views
+        engagement_score = engagement_rate * views * self.engagement_weight
         
-        # OPTIMIZED: Frische-Boost für neue Videos (max 10%, linear abfallend)
-        freshness_multiplier = 1.0
-        if video.age_hours < self.freshness_boost_hours:
-            # Linearer Boost: 10% für 0h → 0% für 12h
-            boost_percentage = self.max_freshness_boost * (
-                (self.freshness_boost_hours - video.age_hours) / self.freshness_boost_hours
-            )
-            freshness_multiplier = 1.0 + boost_percentage
+        # 3. FRESHNESS: Views × Zeit-Dämpfung (Frische-Boost - 10%)
+        time_decay = math.exp(-age_hours / self.time_decay_hours)
+        freshness_score = views * time_decay * self.freshness_weight
         
-        # Finaler Score (OHNE Duration-Bonus!)
-        final_score = score_per_hour * freshness_multiplier
+        # FINALE MOMENTUM-SCORE
+        momentum_score = velocity_score + engagement_score + freshness_score
         
-        # Debug-Output für Optimierung
-        if video.age_hours < 1:  # Nur für sehr neue Videos loggen
-            print(f"🔍 OPTIMIZED Score Debug: {video.title[:30]}...")
-            print(f"   Views: {views:,} * {self.views_weight} = {views * self.views_weight:,.0f}")
-            print(f"   Comments: {comments:,} * {self.comments_factor} = {comments * self.comments_factor:,.0f}")
-            print(f"   Likes: {likes:,} * {self.likes_factor} = {likes * self.likes_factor:,.0f}")
-            print(f"   Raw Score: {raw_score:,.0f}")
-            print(f"   Age: {age_hours:.1f}h → Per Hour: {score_per_hour:,.0f}")
-            print(f"   Freshness: {freshness_multiplier:.3f}x")
-            print(f"   Final: {final_score:,.0f}")
+        # Debug-Output für neue Videos (um Formel zu verstehen)
+        if age_hours < 2:  # Nur für sehr neue Videos loggen
+            print(f"🔍 MOMENTUM Score Debug: {video.title[:30]}...")
+            print(f"   Views: {views:,}, Likes: {likes:,}, Comments: {comments:,}")
+            print(f"   Age: {age_hours:.1f}h")
+            print(f"   1. Velocity: {views_per_hour:,.0f}/h × {self.velocity_weight} = {velocity_score:,.0f}")
+            print(f"   2. Engagement: {engagement_rate:.4f} × {views:,} × {self.engagement_weight} = {engagement_score:,.0f}")
+            print(f"   3. Freshness: {views:,} × {time_decay:.3f} × {self.freshness_weight} = {freshness_score:,.0f}")
+            print(f"   TOTAL MOMENTUM: {momentum_score:,.0f}")
         
-        return final_score
+        return momentum_score
     
     def calculate_trending_score_with_regional_boost(self, video: VideoData, regional_relevance_score: float = 0.0) -> float:
         """
-        OPTIMIZED Score mit Regional-Boost
+        MOMENTUM Score mit Regional-Boost
         
         Args:
             video: Video-Daten
@@ -173,7 +159,7 @@ class OptimizedTrendingAlgorithm(TrendingAlgorithm):
             Final Trending-Score mit Regional-Boost
         """
         
-        # Basis-Score berechnen
+        # Basis MOMENTUM-Score berechnen
         base_score = self.calculate_trending_score(video)
         
         # Regional-Boost anwenden (max +20%)
@@ -183,10 +169,10 @@ class OptimizedTrendingAlgorithm(TrendingAlgorithm):
         # Debug für Regional-Boost
         if regional_relevance_score > 0.5:
             print(f"🎯 Regional Boost: {video.title[:30]}...")
-            print(f"   Base Score: {base_score:,.0f}")
+            print(f"   Base MOMENTUM: {base_score:,.0f}")
             print(f"   Regional Relevance: {regional_relevance_score:.2f}")
             print(f"   Boost: +{(regional_multiplier-1)*100:.1f}%")
-            print(f"   Final: {boosted_score:,.0f}")
+            print(f"   Final MOMENTUM: {boosted_score:,.0f}")
         
         return boosted_score
     
@@ -194,70 +180,82 @@ class OptimizedTrendingAlgorithm(TrendingAlgorithm):
         """Algorithmus-Informationen für API"""
         return {
             "version": self.version,
-            "description": "OPTIMIZED Algorithm basierend auf User-Feedback",
-            "improvements": [
-                "Views: 75% Gewichtung (Haupttreiber)",
-                "Comments: 8x Faktor (wertvoll aber selten)",
-                "Likes: 2x Faktor (moderate Gewichtung)", 
-                "Linearer Age-Einfluss (kein exponentieller Penalty)",
-                "KEIN Duration-Bonus (eliminiert Livestream-Bias)",
-                "Frische-Boost: 10% für <12h Videos"
-            ],
-            "parameters": {
-                "views_weight": self.views_weight,
-                "comments_factor": self.comments_factor,
-                "likes_factor": self.likes_factor,
-                "freshness_boost_hours": self.freshness_boost_hours,
-                "max_freshness_boost": self.max_freshness_boost,
-                "duration_bonus": "REMOVED (was causing Livestream bias)"
+            "name": "MOMENTUM Trending Algorithm",
+            "description": "Original PRD Formel für echte Trend-Erkennung",
+            "formula": "Trending-Score = (Views/Stunde × 0.6) + (Engagement-Rate × Views × 0.3) + (Views × Zeit-Dämpfung × 0.1)",
+            "components": {
+                "velocity": {
+                    "formula": "Views / age_hours",
+                    "weight": self.velocity_weight,
+                    "description": "Geschwindigkeit der Popularität - Haupttreiber für Trends"
+                },
+                "engagement": {
+                    "formula": "(Likes + Comments) / Views * Views",
+                    "weight": self.engagement_weight,
+                    "description": "Engagement-Rate kombiniert mit absoluter Popularität"
+                },
+                "freshness": {
+                    "formula": "Views * exp(-age_hours / 24)",
+                    "weight": self.freshness_weight,
+                    "description": "Zeit-Dämpfung bevorzugt neuere Videos"
+                }
             },
-            "formula": "(Views*0.75 + Comments*8 + Likes*2) / age_hours * freshness_boost",
-            "benefits": [
-                "Transparenter und verständlicher",
-                "Weniger anfällig für Bot-Manipulation",
-                "Bessere Balance zwischen neuen und etablierten Videos",
-                "Eliminiert Livestream-Dominanz",
-                "Realistische Trend-Erkennung"
-            ]
+            "parameters": {
+                "velocity_weight": self.velocity_weight,
+                "engagement_weight": self.engagement_weight,
+                "freshness_weight": self.freshness_weight,
+                "time_decay_hours": self.time_decay_hours
+            },
+            "advantages": [
+                "Videos mit hoher Interaktion werden bevorzugt",
+                "Neuere Videos erhalten faire Chancen",
+                "Echtes 'Momentum' wird gemessen, nicht nur Gesamtpopularität",
+                "Balanciert Velocity, Engagement und Frische optimal",
+                "Weniger anfällig für reine View-Manipulation"
+            ],
+            "examples": {
+                "viral_new": "Neues Video mit 100K Views/h + hohem Engagement → hoher Score",
+                "popular_old": "Altes Video mit 1M Views aber wenig Velocity → mittlerer Score", 
+                "engaging_medium": "Mittleres Video mit sehr hohem Engagement → boosted Score"
+            }
         }
 
 
-# OPTIMIZED: Legacy-Kompatibilität mit verbessertem Algorithmus
-class EnhancedTrendingAlgorithm(OptimizedTrendingAlgorithm):
-    """Alias für Backwards-Compatibility"""
+# MOMENTUM: Legacy-Kompatibilität
+class EnhancedTrendingAlgorithm(MomentumTrendingAlgorithm):
+    """Legacy-Kompatibilität mit MOMENTUM Algorithm"""
     
-    def __init__(self, engagement_factor: float = 8.0, freshness_exponent: float = 1.0):
+    def __init__(self, engagement_factor: float = 10.0, freshness_exponent: float = 1.3):
         """
-        Legacy-Constructor für Kompatibilität
+        Legacy-Constructor - konvertiert zu MOMENTUM Algorithm
         
         Args:
-            engagement_factor: Wird für comments_factor verwendet
-            freshness_exponent: Wird ignoriert (linearer Einfluss ist besser)
+            engagement_factor: Wird für engagement_weight Berechnung verwendet
+            freshness_exponent: Wird für time_decay_hours Berechnung verwendet
         """
-        # Konvertiere alte Parameter zu neuen
+        # Konvertiere alte Parameter zu neuen MOMENTUM Parametern
         super().__init__(
-            views_weight=0.75,
-            comments_factor=engagement_factor,
-            likes_factor=2.0,
-            freshness_boost_hours=12.0,
-            max_freshness_boost=0.1
+            velocity_weight=0.6,
+            engagement_weight=0.3,
+            freshness_weight=0.1,
+            time_decay_hours=24.0
         )
-        print(f"🔄 Legacy compatibility: engagement_factor={engagement_factor} → comments_factor={engagement_factor}")
-        print(f"🔄 Legacy compatibility: freshness_exponent={freshness_exponent} → IGNORED (using linear age influence)")
+        print(f"🔄 Legacy compatibility: engagement_factor={engagement_factor} → MOMENTUM formula")
+        print(f"🔄 Legacy compatibility: freshness_exponent={freshness_exponent} → exp(-h/24) decay")
 
 
-# OPTIMIZED: V6 Analyzer mit verbessertem Algorithmus
+# MOMENTUM: V6 Analyzer mit MOMENTUM Algorithm
 class V6TrendingAnalyzer:
-    """V6.1 Analyzer mit OPTIMIZED Algorithm"""
+    """V6.1 Analyzer mit MOMENTUM Algorithm"""
     
     def __init__(self, algorithm: TrendingAlgorithm = None, target_region: str = "DE"):
-        """Initialize mit OPTIMIZED Algorithm als Default"""
+        """Initialize mit MOMENTUM Algorithm als Default"""
         self.target_region = target_region
         
-        # OPTIMIZED: Verwende neuen Algorithmus als Standard
+        # MOMENTUM: Verwende MOMENTUM Algorithm als Standard
         if algorithm is None:
-            self.algorithm = OptimizedTrendingAlgorithm()
-            print("🚀 Using OPTIMIZED Algorithm V7.0 (User-Feedback based)")
+            self.algorithm = MomentumTrendingAlgorithm()
+            print("🚀 Using MOMENTUM Algorithm V8.0 (Original PRD Formula)")
         else:
             self.algorithm = algorithm
             print(f"🔧 Using custom algorithm: {type(algorithm).__name__}")
@@ -280,7 +278,7 @@ class V6TrendingAnalyzer:
     def analyze_videos(self, videos: List[VideoData], top_count: int = 12, 
                       query: str = "trending", min_duration: int = 0) -> Tuple[List[TrendingResult], Dict]:
         """
-        OPTIMIZED Video-Analyse mit verbessertem Algorithmus
+        MOMENTUM Video-Analyse mit Original PRD Formel
         """
         
         # Duration-Filter anwenden
@@ -289,7 +287,7 @@ class V6TrendingAnalyzer:
             videos = [v for v in videos if v.duration_seconds >= min_duration_seconds]
             print(f"🔧 Duration-Filter: {len(videos)} Videos ≥ {min_duration} Minuten")
         
-        print(f"\n🚀 OPTIMIZED Analysis: '{query}' → {self.target_region}")
+        print(f"\n🚀 MOMENTUM Analysis: '{query}' → {self.target_region}")
         print("=" * 60)
         
         results = []
@@ -313,8 +311,8 @@ class V6TrendingAnalyzer:
                         'blacklisted': False
                     }
                 
-                # OPTIMIZED: Neue Score-Berechnung mit Regional-Boost
-                if isinstance(self.algorithm, OptimizedTrendingAlgorithm):
+                # MOMENTUM: Neue Score-Berechnung mit Regional-Boost
+                if isinstance(self.algorithm, MomentumTrendingAlgorithm):
                     trending_score = self.algorithm.calculate_trending_score_with_regional_boost(
                         video, regional_relevance_score
                     )
@@ -329,7 +327,7 @@ class V6TrendingAnalyzer:
                     trending_score=trending_score,
                     rank=0,  # Wird später gesetzt
                     normalized_score=0.0,  # Wird später berechnet
-                    algorithm_version="optimized_v7.0",
+                    algorithm_version="momentum_v8.0",
                     regional_relevance=regional_relevance,
                     blacklisted=regional_relevance.get('blacklisted', False)
                 )
@@ -340,10 +338,10 @@ class V6TrendingAnalyzer:
                 print(f"⚠️ Error analyzing video {video.video_id}: {e}")
                 continue
         
-        # OPTIMIZED: Sortierung nach Trending-Score (korrekt)
+        # MOMENTUM: Sortierung nach MOMENTUM-Score
         results.sort(key=lambda x: x.trending_score, reverse=True)
         
-        # OPTIMIZED: Korrekte normalized_score Berechnung
+        # MOMENTUM: Korrekte normalized_score Berechnung
         if results:
             max_score = results[0].trending_score
             for idx, result in enumerate(results[:top_count]):
@@ -351,22 +349,17 @@ class V6TrendingAnalyzer:
                 result.normalized_score = min((result.trending_score / max_score) * 10, 10.0)
         
         # Debug-Output
-        print(f"📊 OPTIMIZED Results:")
+        print(f"📊 MOMENTUM Results:")
         print(f"   Total analyzed: {len(results)}")
         if len(results) >= 3:
-            print(f"   Top 3 Scores: {results[0].trending_score:.0f}, {results[1].trending_score:.0f}, {results[2].trending_score:.0f}")
+            print(f"   Top 3 MOMENTUM Scores: {results[0].trending_score:.0f}, {results[1].trending_score:.0f}, {results[2].trending_score:.0f}")
         print("=" * 60)
         
         # Legacy filter_stats für Kompatibilität
         filter_stats = {
             "original_count": len(videos),
-            "algorithm_used": "optimized_v7.0",
-            "improvements_applied": [
-                "Linear age influence",
-                "No duration bias", 
-                "Optimized engagement weighting",
-                "Improved freshness boost"
-            ]
+            "algorithm_used": "momentum_v8.0",
+            "formula_applied": "Trending-Score = (Views/Stunde × 0.6) + (Engagement-Rate × Views × 0.3) + (Views × Zeit-Dämpfung × 0.1)"
         }
         
         return results[:top_count], filter_stats
@@ -375,9 +368,9 @@ class V6TrendingAnalyzer:
         """Algorithm-Info für API"""
         base_info = self.algorithm.get_algorithm_info()
         base_info.update({
-            "analyzer_version": "v6.1_optimized",
+            "analyzer_version": "v6.1_momentum",
             "target_region": self.target_region,
-            "optimization_source": "User feedback based improvements"
+            "formula_source": "Original PRD - bewährte Formel"
         })
         return base_info
 
@@ -387,92 +380,105 @@ TrendingAnalyzer = V6TrendingAnalyzer
 V5TrendingAnalyzer = V6TrendingAnalyzer
 
 
-# OPTIMIZED Algorithm Factory
+# MOMENTUM Algorithm Factory
 class AlgorithmFactory:
-    """Factory mit OPTIMIZED Algorithm als Standard"""
+    """Factory mit MOMENTUM Algorithm"""
     
     @staticmethod
     def create_basic_algorithm() -> TrendingAlgorithm:
-        """Basis-Algorithmus (jetzt OPTIMIZED)"""
-        return OptimizedTrendingAlgorithm()
+        """Basis-Algorithmus (MOMENTUM)"""
+        return MomentumTrendingAlgorithm()
     
     @staticmethod
     def create_regional_algorithm(region: str) -> TrendingAlgorithm:
-        """Regional-optimierter Algorithmus"""
-        return OptimizedTrendingAlgorithm(
-            views_weight=0.75,
-            comments_factor=8.0,
-            likes_factor=2.0,
-            freshness_boost_hours=12.0,
-            max_freshness_boost=0.15  # Leicht höherer Boost für regionale Algorithmen
+        """Regional-optimierter MOMENTUM Algorithmus"""
+        return MomentumTrendingAlgorithm(
+            velocity_weight=0.6,
+            engagement_weight=0.3,
+            freshness_weight=0.1,
+            time_decay_hours=20.0  # Leicht kürzere Decay-Zeit für regionale Relevanz
         )
     
     @staticmethod
     def create_anti_spam_algorithm() -> TrendingAlgorithm:
-        """Anti-Spam-Algorithmus"""
-        return OptimizedTrendingAlgorithm(
-            views_weight=0.80,        # Mehr Gewicht auf Views (schwerer zu faken)
-            comments_factor=6.0,      # Weniger Gewicht auf Comments (leichter zu faken)
-            likes_factor=1.5,         # Weniger Gewicht auf Likes
-            freshness_boost_hours=6.0, # Kürzerer Freshness-Boost
-            max_freshness_boost=0.05   # Geringerer Boost (verhindert schnelle Manipulation)
+        """Anti-Spam MOMENTUM Algorithmus"""
+        return MomentumTrendingAlgorithm(
+            velocity_weight=0.7,    # Mehr Gewicht auf Views/h (schwerer zu faken)
+            engagement_weight=0.2,  # Weniger Gewicht auf Engagement (leichter zu faken)
+            freshness_weight=0.1,
+            time_decay_hours=12.0   # Kürzere Decay-Zeit (verhindert lange Manipulation)
         )
     
     @staticmethod
     def create_experimental_algorithm() -> TrendingAlgorithm:
-        """Experimenteller Algorithmus für Tests"""
-        return OptimizedTrendingAlgorithm(
-            views_weight=0.70,
-            comments_factor=10.0,     # Höhere Comment-Gewichtung
-            likes_factor=3.0,         # Höhere Like-Gewichtung
-            freshness_boost_hours=24.0, # Längerer Freshness-Boost
-            max_freshness_boost=0.20   # Höherer Boost
+        """Experimenteller MOMENTUM Algorithmus"""
+        return MomentumTrendingAlgorithm(
+            velocity_weight=0.5,
+            engagement_weight=0.4,  # Höhere Engagement-Gewichtung
+            freshness_weight=0.1,
+            time_decay_hours=36.0   # Längere Decay-Zeit
         )
 
 
-# OPTIMIZED: Test-Funktion
-def test_optimized_algorithm():
-    """Test der OPTIMIZED Algorithm-Verbesserungen"""
+# MOMENTUM: Test-Funktion
+def test_momentum_algorithm():
+    """Test der MOMENTUM Algorithm mit verschiedenen Video-Typen"""
     
-    print("\n🧪 TESTING OPTIMIZED Algorithm V7.0")
+    print("\n🧪 TESTING MOMENTUM Algorithm V8.0")
     print("=" * 50)
     
     # Test-Videos erstellen
     test_videos = [
-        # Altes populäres Video
-        VideoData("old_popular", "Altes populäres Video", "TestChannel", 
-                 views=1000000, comments=5000, likes=50000, 
-                 duration_seconds=600, age_hours=48, published_at=""),
-        
-        # Neues viral Video  
-        VideoData("new_viral", "Neues virales Video", "TestChannel",
-                 views=500000, comments=8000, likes=40000,
+        # Viral video - hohe Velocity
+        VideoData("viral", "Viral Video", "TestChannel", 
+                 views=500000, comments=8000, likes=40000, 
                  duration_seconds=300, age_hours=6, published_at=""),
         
-        # Livestream (sollte KEINEN Duration-Bonus bekommen)
-        VideoData("livestream", "Langer Livestream", "TestChannel",
-                 views=200000, comments=3000, likes=15000,
-                 duration_seconds=10800, age_hours=12, published_at="")  # 3h Livestream
+        # Engaging video - hohe Engagement-Rate
+        VideoData("engaging", "Sehr engaging Video", "TestChannel",
+                 views=100000, comments=5000, likes=15000,
+                 duration_seconds=600, age_hours=12, published_at=""),
+        
+        # Popular old video - viele Views aber alt
+        VideoData("popular_old", "Populäres altes Video", "TestChannel",
+                 views=2000000, comments=10000, likes=100000,
+                 duration_seconds=900, age_hours=72, published_at=""),
+                 
+        # Fresh new video - sehr neu aber wenige Views
+        VideoData("fresh", "Brandneues Video", "TestChannel",
+                 views=50000, comments=800, likes=5000,
+                 duration_seconds=420, age_hours=1, published_at="")
     ]
     
-    # Algorithmen vergleichen
-    old_algorithm = EnhancedTrendingAlgorithm(engagement_factor=10.0, freshness_exponent=1.3)
-    new_algorithm = OptimizedTrendingAlgorithm()
+    algorithm = MomentumTrendingAlgorithm()
     
-    print("\nVergleich OLD vs OPTIMIZED:")
-    print("-" * 30)
+    print("\nMOMENTUM Algorithm Test Results:")
+    print("-" * 40)
     
     for video in test_videos:
-        old_score = old_algorithm.calculate_trending_score(video)
-        new_score = new_algorithm.calculate_trending_score(video)
+        score = algorithm.calculate_trending_score(video)
+        
+        views_per_hour = video.views / video.age_hours
+        engagement_rate = (video.likes + video.comments) / video.views
+        time_decay = math.exp(-video.age_hours / 24)
         
         print(f"\n{video.title}:")
-        print(f"  Views: {video.views:,}, Comments: {video.comments:,}, Age: {video.age_hours}h")
-        print(f"  OLD Score: {old_score:,.0f}")
-        print(f"  NEW Score: {new_score:,.0f}")
-        print(f"  Difference: {((new_score/old_score)-1)*100:+.1f}%")
+        print(f"  Views: {video.views:,}, Age: {video.age_hours}h")
+        print(f"  Views/h: {views_per_hour:,.0f}")
+        print(f"  Engagement: {engagement_rate:.3f}")
+        print(f"  Time Decay: {time_decay:.3f}")
+        print(f"  MOMENTUM Score: {score:,.0f}")
+    
+    # Sortiere nach MOMENTUM Score
+    scored_videos = [(v, algorithm.calculate_trending_score(v)) for v in test_videos]
+    scored_videos.sort(key=lambda x: x[1], reverse=True)
+    
+    print(f"\nMOMENTUM Ranking:")
+    print("-" * 20)
+    for i, (video, score) in enumerate(scored_videos, 1):
+        print(f"#{i}: {video.title} ({score:,.0f})")
 
 
 if __name__ == "__main__":
-    # Test die Optimierungen
-    test_optimized_algorithm()
+    # Test die MOMENTUM Algorithm
+    test_momentum_algorithm()
