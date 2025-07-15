@@ -1,4 +1,4 @@
-# trending_algorithm.py - Modularer YouTube Trending Algorithmus
+# trending_algorithm.py - KOMPLETTE DATEI mit Confidence-Fix
 """
 Modularer YouTube Trending Algorithmus mit verbesserter regionaler Filterung
 Einfach austauschbar und testbar für verschiedene Strategien
@@ -337,6 +337,74 @@ class AlgorithmFactory:
             anti_spam_threshold=0.02,
             freshness_exponent=1.5
         )
+
+
+# NEU: CONFIDENCE-BERECHNUNG (das war das fehlende Stück!)
+def calculate_realistic_confidence(video_title, video_channel, views, comments, age_hours, target_region='DE'):
+    """
+    Berechnet realistische Confidence-Werte statt 50% Default
+    Diese Funktion war der Grund für die 50% Confidence überall!
+    """
+    confidence_score = 0.5  # Start bei 50%
+    
+    # 1. Engagement-Check
+    engagement_rate = comments / max(views, 1)
+    if engagement_rate > 0.05:  # >5% = sehr verdächtig (Bots)
+        confidence_score -= 0.3
+    elif engagement_rate > 0.02:  # 2-5% = etwas verdächtig
+        confidence_score -= 0.1
+    elif engagement_rate >= 0.001:  # 0.1-2% = gesund
+        confidence_score += 0.2
+    
+    # 2. Verstärkter Indien-Check
+    text = f"{video_title} {video_channel}".lower()
+    indian_keywords = [
+        'cricket', 'bollywood', 'hindi', 'india', 'indian', 'mumbai', 'delhi',
+        'singh', 'kumar', 'sharma', 'patel', 'gupta', 'raj', 'amit', 'rohit',
+        'ipl', 'csk', 'mi', 'rcb', 'subscribe karo', 'like kijiye', 'tamil',
+        'telugu', 'malayalam', 'bengali', 'punjabi', 'bhojpuri', 'desi'
+    ]
+    
+    indian_count = sum(1 for keyword in indian_keywords if keyword in text)
+    
+    if target_region != 'IN' and indian_count >= 2:
+        confidence_score -= 0.4  # Starke Reduktion für indische Inhalte
+        print(f"🚫 Starke indische Indikatoren gefunden: {indian_count}")
+    elif target_region != 'IN' and indian_count >= 1:
+        confidence_score -= 0.2  # Mittlere Reduktion
+        print(f"⚠️ Indische Indikatoren gefunden: {indian_count}")
+    
+    # 3. Views-to-Age Ratio
+    views_per_hour = views / max(age_hours, 1)
+    if views_per_hour > 10000:  # Viral
+        confidence_score += 0.2
+    elif views_per_hour > 1000:  # Gut
+        confidence_score += 0.1
+    elif views_per_hour < 50:    # Sehr langsam
+        confidence_score -= 0.1
+    
+    # 4. Regionale Inhalte bevorzugen
+    if target_region == 'DE':
+        german_keywords = ['deutschland', 'german', 'deutsch', 'bundesliga', 'münchen', 'berlin', 'hamburg', 'dazn', 'sport1']
+        german_count = sum(1 for keyword in german_keywords if keyword in text)
+        if german_count >= 1:
+            confidence_score += 0.2
+            print(f"✅ Deutsche Indikatoren gefunden: {german_count}")
+    elif target_region == 'US':
+        us_keywords = ['america', 'american', 'usa', 'nfl', 'nba', 'mlb', 'espn']
+        us_count = sum(1 for keyword in us_keywords if keyword in text)
+        if us_count >= 1:
+            confidence_score += 0.2
+    elif target_region == 'ES':
+        spanish_keywords = ['españa', 'spanish', 'madrid', 'barcelona', 'la liga']
+        spanish_count = sum(1 for keyword in spanish_keywords if keyword in text)
+        if spanish_count >= 1:
+            confidence_score += 0.2
+    
+    # Auf realistischen Bereich begrenzen (15% - 90%)
+    final_confidence = max(0.15, min(0.90, confidence_score))
+    
+    return final_confidence
 
 
 # Demo/Test-Funktionen
