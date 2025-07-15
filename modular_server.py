@@ -326,7 +326,7 @@ class ModularYouTubeHandler(http.server.BaseHTTPRequestHandler):
                         <li><code>modular_server.py</code> → HTTP Server, API Endpoints</li>
                         <li><code>trending_algorithm.py</code> → V5.0 Enhanced Filter Logic</li>
                         <li><code>RegionalFilter</code> → Anti-Bias Pattern Recognition</li>
-                        <li><code>V5TrendingAnalyzer</code> → Advanced Analytics Engine</li>
+                        <li><code>V6TrendingAnalyzer</code> → Advanced Analytics Engine</li>
                     </ul>
                     
                     <p><strong>Erwartete Ergebnisse:</strong></p>
@@ -384,7 +384,7 @@ class ModularYouTubeHandler(http.server.BaseHTTPRequestHandler):
             algorithm = self.create_algorithm(algorithm_type, region)
             
             # Create V5.0 Enhanced Analyzer
-            analyzer = V5TrendingAnalyzer(algorithm, target_region=region)
+            analyzer = V6TrendingAnalyzer(algorithm, target_region=region)
             
             # V5.0 Enhanced Analysis (includes pre-filtering, score calculation, etc.)
             results, filter_stats = analyzer.analyze_videos(video_data_list, top_count)
@@ -699,7 +699,7 @@ class ModularYouTubeHandler(http.server.BaseHTTPRequestHandler):
             for alg_type in self.ALGORITHM_STRATEGIES.keys():
                 # Create algorithm and analyzer
                 algorithm = self.create_algorithm(alg_type, region)
-                analyzer = V5TrendingAnalyzer(algorithm, target_region=region)
+                analyzer = V6TrendingAnalyzer(algorithm, target_region=region)
                 
                 # V5.0 Enhanced Analysis
                 results, filter_stats = analyzer.analyze_videos(video_data_list, 6)
@@ -776,7 +776,7 @@ class ModularYouTubeHandler(http.server.BaseHTTPRequestHandler):
             
             # V5.0 Enhanced Analysis
             algorithm = self.create_algorithm('regional', region)
-            analyzer = V5TrendingAnalyzer(algorithm, target_region=region)
+            analyzer = V6TrendingAnalyzer(algorithm, target_region=region)
             results, filter_stats = analyzer.analyze_videos(video_data_list, top_count)
             
             # Create V5.0 Enhanced CSV
@@ -850,7 +850,7 @@ class ModularYouTubeHandler(http.server.BaseHTTPRequestHandler):
         
         for alg_type in self.ALGORITHM_STRATEGIES.keys():
             algorithm = self.create_algorithm(alg_type, 'DE')
-            analyzer = V5TrendingAnalyzer(algorithm, target_region='DE')
+            analyzer = V6TrendingAnalyzer(algorithm, target_region='DE')
             algorithms_info[alg_type] = {
                 "name": self.ALGORITHM_STRATEGIES[alg_type],
                 "details": analyzer.get_algorithm_info(),
