@@ -20,7 +20,7 @@ from collections import defaultdict
 
 # Import des V5.0 Enhanced Algorithmus
 from trending_algorithm import (
-    VideoData, V5TrendingAnalyzer, AlgorithmFactory,
+    VideoData, V6TrendingAnalyzer, AlgorithmFactory,
     RegionalFilter, TrendingResult, calculate_realistic_confidence
 )
 
