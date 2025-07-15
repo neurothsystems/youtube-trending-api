@@ -765,7 +765,8 @@ class EnhancedTrendingAlgorithm(TrendingAlgorithm):
 class V6TrendingAnalyzer:
     """V6.1: Hauptklasse für Regional-Trending-Analyse"""
     
-    def __init__(self, target_region: str = "DE", algorithm: TrendingAlgorithm = None):
+    def __init__(self, algorithm: TrendingAlgorithm = None, target_region: str = "DE"):
+        """V6.1: Kompatible Parameter-Reihenfolge mit bestehender API"""
         self.target_region = target_region
         self.algorithm = algorithm or EnhancedTrendingAlgorithm()
         
@@ -782,6 +783,63 @@ class V6TrendingAnalyzer:
             'api_calls_made': 0,
             'cache_hits': 0
         }
+    
+    def analyze_videos(self, videos: List[VideoData], top_count: int = 12, 
+                      query: str = "trending") -> Tuple[List[TrendingResult], Dict]:
+        """V6.1: Kompatible API-Signatur für bestehenden Server"""
+        
+        # Rufe die neue V6.1 Implementierung auf
+        response = self.analyze_videos_v6(query, videos, top_count)
+        
+        # Konvertiere Response zurück zu altem Format für Kompatibilität
+        results = []
+        for idx, video_data in enumerate(response['top_videos']):
+            # Versuche video_id aus URL zu extrahieren, fallback zu Index
+            video_id = ''
+            try:
+                if 'v=' in video_data['url']:
+                    video_id = video_data['url'].split('v=')[1].split('&')[0]
+                else:
+                    video_id = f"video_{idx}"
+            except:
+                video_id = f"video_{idx}"
+            
+            # Rekonstruiere VideoData aus API-Response
+            video = VideoData(
+                video_id=video_id,
+                title=video_data['title'],
+                channel=video_data['channel'],
+                views=video_data['views'],
+                comments=video_data['comments'],
+                likes=video_data['likes'],
+                duration_seconds=video_data['duration_seconds'],
+                age_hours=video_data['age_hours'],
+                published_at='',
+                thumbnail=None
+            )
+            
+            result = TrendingResult(
+                video_data=video,
+                trending_score=video_data['trending_score'],
+                rank=video_data['rank'],
+                normalized_score=video_data['normalized_score'],
+                algorithm_version=video_data['algorithm_version'],
+                regional_relevance=video_data['regional_relevance'],
+                blacklisted=video_data.get('blacklisted', False)
+            )
+            results.append(result)
+        
+        # Filter-Statistiken für Legacy-API
+        filter_stats = {
+            "original_count": len(videos),
+            "indian_videos_found": response['regional_insights']['spam_videos_filtered'],
+            "indian_videos_kept": 1,  # Max 1 nach V6.1 Filter
+            "indian_videos_removed": response['regional_insights']['spam_videos_filtered'],
+            "german_videos_boosted": response['regional_insights']['high_relevance_videos'],
+            "total_score_modifications": len(results)
+        }
+        
+        return results, filter_stats
     
     def analyze_videos_v6(self, query: str, videos: List[VideoData], top_count: int = 12) -> dict:
         """V6.1: Hauptfunktion für Video-Analyse"""
@@ -891,6 +949,7 @@ class V6TrendingAnalyzer:
 
 # Compatibility Aliases (für bestehende API)
 TrendingAnalyzer = V6TrendingAnalyzer
+V5TrendingAnalyzer = V6TrendingAnalyzer  # Für modular_server.py Kompatibilität
 
 
 class AlgorithmFactory:
