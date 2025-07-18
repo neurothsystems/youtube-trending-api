@@ -1,127 +1,58 @@
-# V6.0 YouTube Trending Analyzer - Complete Dependencies
-# Saubere V6.0-only Dependencies ohne Legacy-Code
+# V6.0 YouTube Trending Analyzer - Render-kompatible Dependencies
+# Optimiert für Python 3.13 und Render.com
 
-# === CORE API ===
-# YouTube Data API v3 - Basis für alle API-Calls
-google-api-python-client==2.70.0
-google-auth==2.16.0
-google-auth-oauthlib==0.8.0
-google-auth-httplib2==0.1.0
+# === Build-Dependencies (Render Fix) ===
+setuptools>=70.0.0
+wheel>=0.42.0
 
-# === V6.0 SCRAPING ===  
-# Trending Pages Scraping (V6.0 Kernfeature)
-beautifulsoup4==4.12.2
-requests==2.31.0
-lxml==4.9.3
-fake-useragent==1.4.0
+# === CORE API (Python 3.13 kompatibel) ===
+google-api-python-client>=2.80.0
+google-auth>=2.20.0
+google-auth-oauthlib>=1.0.0
+google-auth-httplib2>=0.2.0
 
-# Optional: Selenium für robusteres Scraping (wenn requests fails)
-selenium==4.15.2
+# === V6.0 SCRAPING (Vereinfacht für Render) ===
+beautifulsoup4>=4.12.2
+requests>=2.31.0
+lxml>=4.9.4
+fake-useragent>=1.4.0
 
-# === DATA PROCESSING ===
-# ISO 8601 duration parsing für YouTube videos
-isodate==0.6.1
-
-# Pandas für Datenanalyse (optional, für erweiterte Analytics)
-pandas==2.0.3
-numpy==1.24.3
+# === DATA PROCESSING (Render-optimiert) ===
+isodate>=0.6.1
 
 # === CONFIGURATION ===
-# YAML configuration files
-PyYAML==6.0.1
+PyYAML>=6.0.1
 
-# Excel export functionality
-openpyxl==3.1.2
+# === WEB SERVER (Leichtgewichtig) ===
+# Entfernt: pandas, numpy, selenium (zu schwer für Render)
 
-# === WEB SERVER ===
-# Async HTTP server (falls needed für Performance)
-aiohttp==3.8.5
-aiofiles==23.2.1
+# === OPTIONAL EXTRAS (nur wenn benötigt) ===
+# openpyxl>=3.1.2
 
-# Flask als Alternative zu http.server (für Production)
-Flask==2.3.3
-Flask-CORS==4.0.0
+# === RENDER DEPLOYMENT ===
+gunicorn>=21.2.0
 
-# === CACHING & PERFORMANCE ===
-# Redis für Production Caching (optional)
-redis==4.6.0
+# === MONITORING (minimal) ===
+psutil>=5.9.6
 
-# Memory caching
-cachetools==5.3.1
+# === DEVELOPMENT (optional) ===
+# pytest>=7.4.3
+# black>=23.9.0
 
-# === DEVELOPMENT & TESTING ===
-# Testing framework
-pytest==7.4.2
-pytest-asyncio==0.21.1
-
-# Code quality
-black==23.7.0
-flake8==6.0.0
-mypy==1.5.1
-
-# === MONITORING & LOGGING ===
-# Better logging
-loguru==0.7.0
-
-# Performance monitoring
-psutil==5.9.5
-
-# === DEPLOYMENT ===
-# WSGI server für Production
-gunicorn==21.2.0
-
-# Environment variables
-python-dotenv==1.0.0
-
-# === UTILITIES ===
-# Date/time utilities
-python-dateutil==2.8.2
-
-# JSON handling
-ujson==5.8.0
-
-# Regular expressions (enhanced)
-regex==2023.8.8
-
-# === OPTIONAL EXTRAS ===
-# Machine Learning für Advanced Analytics (falls später gewünscht)
-# scikit-learn==1.3.0
-
-# Advanced statistics (falls später gewünscht)  
-# scipy==1.11.2
-
-# Plotting für Analytics Dashboard (falls später gewünscht)
-# matplotlib==3.7.2
-# plotly==5.15.0
-
-# ===================================
-# V6.0 DEPENDENCY OVERVIEW:
-# ===================================
+# ===============================================
+# RENDER BUILD OPTIMIZATIONS:
+# ===============================================
 # 
-# CORE (Minimal für V6.0):
-# - google-api-python-client (YouTube API)
-# - beautifulsoup4 + requests (Trending Scraping)
-# - isodate (Duration parsing)
-# - PyYAML (Configuration)
+# Diese requirements.txt ist speziell für Render optimiert:
+# 1. Alle Packages sind Python 3.13 kompatibel
+# 2. Build-Dependencies (setuptools, wheel) explizit angegeben
+# 3. Schwere Dependencies (pandas, numpy) entfernt
+# 4. Flexible Versioning (>=) für bessere Kompatibilität
+# 5. Gunicorn für Production-Ready Deployment
+#
+# Falls Sie advanced Features benötigen:
+# - Pandas/Numpy für Analytics
+# - Selenium für erweiterte Scraping
+# - Redis für Production Caching
 # 
-# ENHANCED (Für Production):
-# + openpyxl (Excel export)
-# + redis (Caching)
-# + Flask (Better web server)
-# + gunicorn (Production server)
-# 
-# DEVELOPMENT:
-# + pytest (Testing)
-# + black/flake8 (Code quality)
-# + loguru (Better logging)
-# 
-# Installation Commands:
-# 
-# Minimal V6.0:
-# pip install google-api-python-client beautifulsoup4 requests isodate PyYAML fake-useragent
-# 
-# Full V6.0:
-# pip install -r requirements.txt
-# 
-# Production V6.0:
-# pip install -r requirements.txt --no-dev
+# Diese können später hinzugefügt werden, wenn der Basic Build funktioniert.
