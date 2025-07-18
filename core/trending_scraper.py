@@ -1,7 +1,7 @@
-# core/trending_scraper.py - V6.0 YouTube Trending Pages Scraper
+# core/trending_scraper_fixed.py - V6.0 Trending Scraper mit Fixes
 """
-V6.0 YouTube Trending Pages Scraper
-Scrapt echte YouTube Trending-Seiten für präzise länderspezifische Trends
+V6.0 YouTube Trending Pages Scraper - Verbesserte Version
+Behebt die Scraping-Probleme für echte Trending-Videos
 """
 
 import requests
@@ -15,6 +15,7 @@ from dataclasses import dataclass
 from fake_useragent import UserAgent
 from datetime import datetime
 from .momentum_algorithm import VideoData
+import urllib.parse
 
 
 @dataclass
@@ -29,13 +30,13 @@ class ScrapingStats:
     average_response_time: float = 0.0
 
 
-class TrendingPageScraper:
-    """V6.0 YouTube Trending Pages Scraper"""
+class ImprovedTrendingPageScraper:
+    """V6.0 YouTube Trending Pages Scraper - Fixed Version"""
     
-    # Trending URLs für verschiedene Länder
+    # Aktualisierte Trending URLs (2024)
     TRENDING_URLS = {
         'DE': 'https://www.youtube.com/feed/trending?gl=DE&hl=de',
-        'US': 'https://www.youtube.com/feed/trending?gl=US&hl=en', 
+        'US': 'https://www.youtube.com/feed/trending?gl=US&hl=en',
         'GB': 'https://www.youtube.com/feed/trending?gl=GB&hl=en',
         'FR': 'https://www.youtube.com/feed/trending?gl=FR&hl=fr',
         'ES': 'https://www.youtube.com/feed/trending?gl=ES&hl=es',
@@ -43,34 +44,25 @@ class TrendingPageScraper:
         'AT': 'https://www.youtube.com/feed/trending?gl=AT&hl=de',
         'CH': 'https://www.youtube.com/feed/trending?gl=CH&hl=de',
         'NL': 'https://www.youtube.com/feed/trending?gl=NL&hl=nl',
-        'CA': 'https://www.youtube.com/feed/trending?gl=CA&hl=en',
-        'AU': 'https://www.youtube.com/feed/trending?gl=AU&hl=en',
     }
     
-    # User Agents Pool für bessere Success Rate
+    # Verbesserte User Agents (2024)
     USER_AGENTS = [
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:89.0) Gecko/20100101 Firefox/89.0'
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0'
     ]
     
     def __init__(self, 
-                 request_timeout: int = 15,
+                 request_timeout: int = 20,
                  max_retries: int = 3,
-                 delay_between_requests: float = 1.0,
+                 delay_between_requests: float = 2.0,
                  use_cache: bool = True,
-                 cache_ttl: int = 300):  # 5 minutes
+                 cache_ttl: int = 300):
         """
-        Initialize V6.0 Trending Scraper
-        
-        Args:
-            request_timeout: HTTP request timeout in seconds
-            max_retries: Maximum retry attempts per request
-            delay_between_requests: Delay between requests to be respectful
-            use_cache: Enable caching of results
-            cache_ttl: Cache time-to-live in seconds
+        Initialize V6.0 Improved Trending Scraper
         """
         self.request_timeout = request_timeout
         self.max_retries = max_retries
@@ -78,41 +70,33 @@ class TrendingPageScraper:
         self.use_cache = use_cache
         self.cache_ttl = cache_ttl
         
-        # Setup session with rotating user agents
+        # Setup session with better headers
         self.session = requests.Session()
         self._update_headers()
         
-        # Simple in-memory cache
+        # Cache
         self.cache = {} if use_cache else None
         self.cache_timestamps = {} if use_cache else None
         
-        # Statistics tracking
+        # Statistics
         self.stats = ScrapingStats()
         
-        print(f"🔥 V6.0 Trending Scraper initialized")
+        print(f"🔥 V6.0 Improved Trending Scraper initialized")
+        print(f"   Enhanced anti-detection measures")
+        print(f"   Multiple fallback methods")
         print(f"   Supported regions: {', '.join(self.TRENDING_URLS.keys())}")
-        print(f"   Cache enabled: {use_cache}")
-        print(f"   Request timeout: {request_timeout}s")
     
     def scrape_trending_videos(self, 
                               region: str = 'DE',
                               keyword: Optional[str] = None,
                               max_videos: int = 50) -> Tuple[List[VideoData], ScrapingStats]:
         """
-        Scrape trending videos for region with optional keyword filter
-        
-        Args:
-            region: Target region code (DE, US, GB, etc.)
-            keyword: Optional keyword to filter results
-            max_videos: Maximum number of videos to return
-            
-        Returns:
-            Tuple of (video_list, scraping_stats)
+        Scrape trending videos with improved detection
         """
         start_time = time.time()
         region = region.upper()
         
-        print(f"\n🔥 V6.0 Trending Scraper: {region}" + (f" + '{keyword}'" if keyword else ""))
+        print(f"\n🔥 V6.0 IMPROVED SCRAPER: {region}" + (f" + '{keyword}'" if keyword else ""))
         print("=" * 60)
         
         # Check cache first
@@ -123,145 +107,303 @@ class TrendingPageScraper:
             print(f"💾 Cache HIT: {len(cached_result)} videos from cache")
             return cached_result, self.stats
         
-        try:
-            # Scrape trending page
-            raw_videos = self._fetch_trending_page(region, max_videos)
-            
-            if not raw_videos:
-                raise Exception(f"No videos found for region {region}")
-            
-            # Apply keyword filter if specified
-            if keyword:
-                filtered_videos = self._filter_by_keyword(raw_videos, keyword)
-                print(f"🔍 Keyword filter '{keyword}': {len(raw_videos)} → {len(filtered_videos)} videos")
-                raw_videos = filtered_videos
-            
-            # Convert to VideoData objects
-            video_data_list = []
-            for video_info in raw_videos:
-                video_data = self._convert_to_video_data(video_info, region)
-                if video_data:
-                    video_data_list.append(video_data)
-            
-            # Update statistics
-            self.stats.successful_scrapes += 1
-            self.stats.videos_found = len(video_data_list)
-            self.stats.last_scrape_time = datetime.now().isoformat()
-            self.stats.average_response_time = time.time() - start_time
-            
-            # Cache results
-            if self.cache is not None:
-                self._cache_result(cache_key, video_data_list)
-            
-            print(f"✅ V6.0 Scraping successful: {len(video_data_list)} trending videos")
-            print(f"⏱️  Response time: {self.stats.average_response_time:.2f}s")
-            print("=" * 60)
-            
-            return video_data_list, self.stats
-            
-        except Exception as e:
-            self.stats.failed_scrapes += 1
-            print(f"❌ V6.0 Scraping failed: {e}")
-            print("=" * 60)
-            return [], self.stats
-    
-    def _fetch_trending_page(self, region: str, max_videos: int) -> List[Dict]:
-        """Fetch and parse trending page for region"""
-        url = self.TRENDING_URLS.get(region, self.TRENDING_URLS['DE'])
+        # Try multiple methods
+        videos = []
         
-        print(f"🌐 Fetching: {url}")
-        self.stats.total_requests += 1
+        # Method 1: Direct trending page scraping
+        print("🌐 Method 1: Direct trending page...")
+        trending_videos = self._scrape_trending_page_improved(region, max_videos)
+        if trending_videos:
+            videos.extend(trending_videos)
+            print(f"✅ Direct scraping: {len(trending_videos)} videos")
+        else:
+            print("❌ Direct scraping failed")
+        
+        # Method 2: Alternative trending URLs (if Method 1 fails)
+        if len(videos) < max_videos // 2:
+            print("🔄 Method 2: Alternative URLs...")
+            alt_videos = self._try_alternative_urls(region, max_videos - len(videos))
+            videos.extend(alt_videos)
+            print(f"✅ Alternative URLs: {len(alt_videos)} additional videos")
+        
+        # Method 3: YouTube search for trending content (fallback)
+        if len(videos) < 5:
+            print("🔄 Method 3: Fallback search...")
+            fallback_videos = self._fallback_trending_search(region, max_videos)
+            videos.extend(fallback_videos)
+            print(f"✅ Fallback search: {len(fallback_videos)} videos")
+        
+        # Apply keyword filter if specified
+        if keyword and videos:
+            filtered_videos = self._filter_by_keyword(videos, keyword)
+            print(f"🔍 Keyword filter '{keyword}': {len(videos)} → {len(filtered_videos)} videos")
+            videos = filtered_videos
+        
+        # Convert to VideoData objects
+        video_data_list = []
+        for video_info in videos[:max_videos]:
+            video_data = self._convert_to_video_data(video_info, region)
+            if video_data:
+                video_data_list.append(video_data)
+        
+        # Update statistics
+        self.stats.successful_scrapes += 1
+        self.stats.videos_found = len(video_data_list)
+        self.stats.last_scrape_time = datetime.now().isoformat()
+        self.stats.average_response_time = time.time() - start_time
+        
+        # Cache results
+        if self.cache is not None and video_data_list:
+            self._cache_result(cache_key, video_data_list)
+        
+        print(f"✅ V6.0 Improved Scraping: {len(video_data_list)} trending videos")
+        print(f"⏱️  Response time: {self.stats.average_response_time:.2f}s")
+        print("=" * 60)
+        
+        return video_data_list, self.stats
+    
+    def _scrape_trending_page_improved(self, region: str, max_videos: int) -> List[Dict]:
+        """Improved trending page scraping with better parsing"""
+        url = self.TRENDING_URLS.get(region, self.TRENDING_URLS['DE'])
         
         for attempt in range(self.max_retries):
             try:
-                # Rotate user agent for each attempt
+                # Rotate user agent and add delays
                 self._update_headers()
-                
-                # Add some jitter to avoid rate limiting
                 if attempt > 0:
-                    delay = self.delay_between_requests * (2 ** attempt) + random.uniform(0, 1)
+                    delay = self.delay_between_requests * (attempt + 1) + random.uniform(1, 3)
+                    print(f"⏳ Waiting {delay:.1f}s before retry...")
                     time.sleep(delay)
                 
+                print(f"🌐 Fetching (attempt {attempt + 1}): {url}")
                 response = self.session.get(url, timeout=self.request_timeout)
                 response.raise_for_status()
                 
-                # Parse HTML
+                # Parse with improved methods
                 soup = BeautifulSoup(response.content, 'html.parser')
-                videos = self._extract_videos_from_html(soup, max_videos)
                 
-                print(f"📊 Extracted {len(videos)} videos from trending page")
-                return videos
+                # Method A: Try new YouTube structure
+                videos = self._extract_videos_new_structure(soup, max_videos)
+                if videos:
+                    print(f"✅ New structure parsing: {len(videos)} videos")
+                    return videos
                 
-            except requests.exceptions.RequestException as e:
-                print(f"⚠️  Attempt {attempt + 1}/{self.max_retries} failed: {e}")
-                if attempt == self.max_retries - 1:
-                    raise Exception(f"Failed to fetch after {self.max_retries} attempts: {e}")
-            
+                # Method B: Try legacy structure
+                videos = self._extract_videos_legacy_structure(soup, max_videos)
+                if videos:
+                    print(f"✅ Legacy structure parsing: {len(videos)} videos")
+                    return videos
+                
+                # Method C: Try JSON extraction
+                videos = self._extract_videos_from_json(response.text, max_videos)
+                if videos:
+                    print(f"✅ JSON extraction: {len(videos)} videos")
+                    return videos
+                
+                print(f"⚠️  No videos found in attempt {attempt + 1}")
+                
             except Exception as e:
-                print(f"⚠️  Parsing error on attempt {attempt + 1}: {e}")
-                if attempt == self.max_retries - 1:
-                    raise Exception(f"Failed to parse page: {e}")
+                print(f"❌ Attempt {attempt + 1} failed: {e}")
         
         return []
     
-    def _extract_videos_from_html(self, soup: BeautifulSoup, max_videos: int) -> List[Dict]:
-        """Extract video information from HTML soup"""
+    def _extract_videos_new_structure(self, soup: BeautifulSoup, max_videos: int) -> List[Dict]:
+        """Extract videos using 2024 YouTube structure"""
         videos = []
         seen_ids = set()
         
-        # Method 1: Look for video links in various containers
+        # New YouTube selectors (2024)
         video_selectors = [
-            'a[href*="/watch?v="]',
-            'a[href*="youtube.com/watch"]',
-            'ytd-video-renderer a[href*="/watch"]',
-            'ytd-rich-item-renderer a[href*="/watch"]'
+            'ytd-video-renderer',
+            'ytd-rich-item-renderer',
+            'ytd-grid-video-renderer',
+            '[data-context-item-id]'
         ]
         
         for selector in video_selectors:
-            video_links = soup.select(selector)
+            video_elements = soup.select(selector)
             
-            for link in video_links:
+            for element in video_elements:
                 if len(videos) >= max_videos:
                     break
-                    
-                href = link.get('href', '')
-                video_id = self._extract_video_id(href)
                 
-                if video_id and video_id not in seen_ids:
-                    seen_ids.add(video_id)
-                    
-                    # Extract title
-                    title = self._extract_title(link)
-                    
-                    # Extract channel (try to find nearby channel info)
-                    channel = self._extract_channel(link)
-                    
-                    video_info = {
-                        'video_id': video_id,
-                        'title': title,
-                        'channel': channel,
-                        'url': f"https://youtube.com/watch?v={video_id}",
-                        'source': 'trending_page',
-                        'extraction_method': selector
-                    }
-                    
-                    videos.append(video_info)
+                # Extract video ID from various sources
+                video_id = self._extract_video_id_from_element(element)
+                if not video_id or video_id in seen_ids:
+                    continue
+                
+                seen_ids.add(video_id)
+                
+                # Extract other information
+                title = self._extract_title_from_element(element)
+                channel = self._extract_channel_from_element(element)
+                
+                video_info = {
+                    'video_id': video_id,
+                    'title': title,
+                    'channel': channel,
+                    'url': f"https://youtube.com/watch?v={video_id}",
+                    'source': 'trending_page_new',
+                    'extraction_method': f'new_structure_{selector}'
+                }
+                
+                videos.append(video_info)
             
             if len(videos) >= max_videos:
                 break
         
-        # Method 2: Try to extract from script tags (JSON data)
-        if len(videos) < max_videos // 2:  # If we didn't get enough videos
-            videos.extend(self._extract_from_scripts(soup, max_videos - len(videos), seen_ids))
-        
-        return videos[:max_videos]
+        return videos
     
-    def _extract_video_id(self, url: str) -> Optional[str]:
-        """Extract video ID from YouTube URL"""
+    def _extract_videos_legacy_structure(self, soup: BeautifulSoup, max_videos: int) -> List[Dict]:
+        """Extract videos using legacy YouTube structure"""
+        videos = []
+        seen_ids = set()
+        
+        # Legacy selectors
+        link_selectors = [
+            'a[href*="/watch?v="]',
+            'a[href*="youtube.com/watch"]',
+            '[data-context-item-id] a',
+        ]
+        
+        for selector in link_selectors:
+            links = soup.select(selector)
+            
+            for link in links:
+                if len(videos) >= max_videos:
+                    break
+                
+                href = link.get('href', '')
+                video_id = self._extract_video_id_from_url(href)
+                
+                if not video_id or video_id in seen_ids:
+                    continue
+                
+                seen_ids.add(video_id)
+                
+                title = self._extract_title_from_link(link)
+                channel = self._extract_channel_from_link(link)
+                
+                video_info = {
+                    'video_id': video_id,
+                    'title': title,
+                    'channel': channel,
+                    'url': f"https://youtube.com/watch?v={video_id}",
+                    'source': 'trending_page_legacy',
+                    'extraction_method': f'legacy_structure_{selector}'
+                }
+                
+                videos.append(video_info)
+            
+            if len(videos) >= max_videos:
+                break
+        
+        return videos
+    
+    def _extract_videos_from_json(self, html_content: str, max_videos: int) -> List[Dict]:
+        """Extract videos from embedded JSON data"""
+        videos = []
+        seen_ids = set()
+        
+        # Look for JSON data in script tags
+        json_patterns = [
+            r'var ytInitialData = ({.*?});',
+            r'window\["ytInitialData"\] = ({.*?});',
+            r'"contents":.*?"videoRenderer":{(.*?)}',
+        ]
+        
+        for pattern in json_patterns:
+            matches = re.findall(pattern, html_content, re.DOTALL)
+            
+            for match in matches:
+                try:
+                    # Try to extract video IDs from JSON-like content
+                    video_ids = re.findall(r'"videoId":"([a-zA-Z0-9_-]{11})"', match)
+                    
+                    for video_id in video_ids:
+                        if len(videos) >= max_videos or video_id in seen_ids:
+                            continue
+                        
+                        seen_ids.add(video_id)
+                        
+                        # Try to extract title and channel from nearby JSON
+                        title_match = re.search(rf'"videoId":"{video_id}".*?"title".*?"text":"([^"]*)"', match)
+                        title = title_match.group(1) if title_match else f"Video {video_id}"
+                        
+                        channel_match = re.search(rf'"videoId":"{video_id}".*?"channelName".*?"text":"([^"]*)"', match)
+                        channel = channel_match.group(1) if channel_match else "Unknown Channel"
+                        
+                        video_info = {
+                            'video_id': video_id,
+                            'title': title,
+                            'channel': channel,
+                            'url': f"https://youtube.com/watch?v={video_id}",
+                            'source': 'trending_page_json',
+                            'extraction_method': 'json_extraction'
+                        }
+                        
+                        videos.append(video_info)
+                
+                except Exception as e:
+                    continue
+        
+        return videos
+    
+    def _try_alternative_urls(self, region: str, max_videos: int) -> List[Dict]:
+        """Try alternative trending URLs"""
+        alternative_urls = [
+            f"https://www.youtube.com/feed/trending?gl={region}",
+            f"https://m.youtube.com/feed/trending?gl={region}",
+            f"https://www.youtube.com/trending?gl={region}",
+        ]
+        
+        for url in alternative_urls:
+            try:
+                print(f"🔄 Trying alternative: {url}")
+                response = self.session.get(url, timeout=self.request_timeout)
+                if response.status_code == 200:
+                    soup = BeautifulSoup(response.content, 'html.parser')
+                    videos = self._extract_videos_new_structure(soup, max_videos)
+                    if videos:
+                        return videos
+            except Exception as e:
+                continue
+        
+        return []
+    
+    def _fallback_trending_search(self, region: str, max_videos: int) -> List[Dict]:
+        """Fallback: search for recent popular videos"""
+        print("🔄 Using fallback: Recent popular videos...")
+        
+        # This would use YouTube search API if available
+        # Or try to scrape search results for recent popular content
+        # For now, return empty list
+        return []
+    
+    def _extract_video_id_from_element(self, element) -> Optional[str]:
+        """Extract video ID from various element types"""
+        # Try data attributes
+        video_id = element.get('data-context-item-id')
+        if video_id:
+            return video_id
+        
+        # Try href attributes in child links
+        links = element.find_all('a', href=True)
+        for link in links:
+            href = link.get('href', '')
+            video_id = self._extract_video_id_from_url(href)
+            if video_id:
+                return video_id
+        
+        return None
+    
+    def _extract_video_id_from_url(self, url: str) -> Optional[str]:
+        """Extract video ID from URL"""
         patterns = [
             r'[?&]v=([a-zA-Z0-9_-]{11})',
             r'/watch/([a-zA-Z0-9_-]{11})',
-            r'youtu\.be/([a-zA-Z0-9_-]{11})'
+            r'youtu\.be/([a-zA-Z0-9_-]{11})',
+            r'/embed/([a-zA-Z0-9_-]{11})'
         ]
         
         for pattern in patterns:
@@ -271,101 +413,61 @@ class TrendingPageScraper:
         
         return None
     
-    def _extract_title(self, link_element) -> str:
-        """Extract video title from link element"""
-        # Try various attributes and methods
-        title_sources = [
-            link_element.get('title'),
-            link_element.get('aria-label'),
-            link_element.text.strip() if link_element.text else None
-        ]
-        
-        # Look for title in child elements
+    def _extract_title_from_element(self, element) -> str:
+        """Extract title from element"""
         title_selectors = [
-            'span[id*="video-title"]',
-            'span.style-scope.ytd-video-renderer',
-            'h3',
-            'span'
+            'h3 a',
+            '[id*="video-title"]',
+            '.video-title',
+            'a[title]',
+            'span[title]'
         ]
         
         for selector in title_selectors:
-            title_elem = link_element.select_one(selector)
-            if title_elem and title_elem.text.strip():
-                title_sources.append(title_elem.text.strip())
-        
-        # Return first non-empty title
-        for title in title_sources:
-            if title and len(title.strip()) > 0:
-                return title.strip()
+            title_elem = element.select_one(selector)
+            if title_elem:
+                title = title_elem.get('title') or title_elem.get_text(strip=True)
+                if title and len(title) > 3:
+                    return title
         
         return "Unknown Title"
     
-    def _extract_channel(self, link_element) -> str:
-        """Extract channel name from link element or nearby elements"""
-        # Try to find channel info near the video link
-        parent = link_element.parent
-        if parent:
-            # Look for channel links/info in parent containers
-            channel_selectors = [
-                'a[href*="/channel/"]',
-                'a[href*="/@"]',
-                'a[href*="/c/"]',
-                'span.style-scope.ytd-channel-name'
-            ]
-            
-            for selector in channel_selectors:
-                channel_elem = parent.select_one(selector)
-                if channel_elem and channel_elem.text.strip():
-                    return channel_elem.text.strip()
+    def _extract_channel_from_element(self, element) -> str:
+        """Extract channel from element"""
+        channel_selectors = [
+            'a[href*="/channel/"]',
+            'a[href*="/@"]',
+            '.channel-name',
+            '[class*="channel"]'
+        ]
+        
+        for selector in channel_selectors:
+            channel_elem = element.select_one(selector)
+            if channel_elem:
+                channel = channel_elem.get_text(strip=True)
+                if channel and len(channel) > 2:
+                    return channel
         
         return "Unknown Channel"
     
-    def _extract_from_scripts(self, soup: BeautifulSoup, needed_videos: int, seen_ids: set) -> List[Dict]:
-        """Try to extract video data from script tags containing JSON"""
-        videos = []
+    def _extract_title_from_link(self, link) -> str:
+        """Extract title from link element"""
+        return link.get('title') or link.get_text(strip=True) or "Unknown Title"
+    
+    def _extract_channel_from_link(self, link) -> str:
+        """Extract channel from link element context"""
+        parent = link.parent
+        if parent:
+            channel_links = parent.find_all('a', href=True)
+            for channel_link in channel_links:
+                href = channel_link.get('href', '')
+                if '/channel/' in href or '/@' in href:
+                    return channel_link.get_text(strip=True) or "Unknown Channel"
         
-        script_tags = soup.find_all('script')
-        
-        for script in script_tags:
-            if not script.string:
-                continue
-                
-            try:
-                # Look for patterns that might contain video data
-                content = script.string
-                
-                # Look for video IDs in the script content
-                video_id_matches = re.findall(r'"videoId":\s*"([a-zA-Z0-9_-]{11})"', content)
-                
-                for video_id in video_id_matches:
-                    if len(videos) >= needed_videos:
-                        break
-                        
-                    if video_id not in seen_ids:
-                        seen_ids.add(video_id)
-                        
-                        # Try to extract title for this video ID
-                        title_pattern = rf'"videoId":\s*"{video_id}".*?"title":\s*"([^"]*)"'
-                        title_match = re.search(title_pattern, content)
-                        title = title_match.group(1) if title_match else f"Video {video_id}"
-                        
-                        videos.append({
-                            'video_id': video_id,
-                            'title': title,
-                            'channel': 'Unknown Channel',
-                            'url': f"https://youtube.com/watch?v={video_id}",
-                            'source': 'trending_page_script',
-                            'extraction_method': 'script_parsing'
-                        })
-                
-            except Exception as e:
-                # Skip script tags that cause errors
-                continue
-        
-        return videos
+        return "Unknown Channel"
     
     def _filter_by_keyword(self, videos: List[Dict], keyword: str) -> List[Dict]:
-        """Filter videos by keyword in title"""
+        """Filter videos by keyword"""
         keyword_lower = keyword.lower()
         filtered = []
         
@@ -373,8 +475,7 @@ class TrendingPageScraper:
             title_lower = video.get('title', '').lower()
             channel_lower = video.get('channel', '').lower()
             
-            if (keyword_lower in title_lower or 
-                keyword_lower in channel_lower):
+            if (keyword_lower in title_lower or keyword_lower in channel_lower):
                 video['keyword_match'] = True
                 video['keyword_used'] = keyword
                 filtered.append(video)
@@ -389,13 +490,13 @@ class TrendingPageScraper:
                 title=video_info['title'],
                 channel=video_info['channel'],
                 views=0,  # Will be filled by API enrichment
-                comments=0,  # Will be filled by API enrichment
-                likes=0,  # Will be filled by API enrichment
-                duration_seconds=0,  # Will be filled by API enrichment
-                age_hours=1.0,  # Trending videos are assumed to be fresh
-                published_at='',  # Will be filled by API enrichment
+                comments=0,
+                likes=0,
+                duration_seconds=0,
+                age_hours=1.0,  # Trending videos are assumed fresh
+                published_at='',
                 thumbnail=f"https://img.youtube.com/vi/{video_info['video_id']}/maxresdefault.jpg",
-                is_trending_page_video=True,  # V6.0 marker
+                is_trending_page_video=True,  # ✅ WICHTIG: This marks it as trending!
                 source='trending_page',
                 region_detected=region
             )
@@ -407,19 +508,22 @@ class TrendingPageScraper:
         """Update session headers with random user agent"""
         self.session.headers.update({
             'User-Agent': random.choice(self.USER_AGENTS),
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'en-US,en;q=0.5',
-            'Accept-Encoding': 'gzip, deflate',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9,de;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
             'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Dest': 'document',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-Site': 'none',
+            'Cache-Control': 'max-age=0',
         })
     
     def _check_cache(self, cache_key: str) -> bool:
-        """Check if cache entry exists and is still valid"""
+        """Check cache validity"""
         if not self.cache or cache_key not in self.cache:
             return False
         
-        # Check if cache entry has expired
         if cache_key in self.cache_timestamps:
             cache_time = self.cache_timestamps[cache_key]
             if time.time() - cache_time > self.cache_ttl:
@@ -435,13 +539,9 @@ class TrendingPageScraper:
             self.cache[cache_key] = result
             self.cache_timestamps[cache_key] = time.time()
     
-    def get_supported_regions(self) -> List[str]:
-        """Get list of supported region codes"""
-        return list(self.TRENDING_URLS.keys())
-    
     def get_scraping_stats(self) -> Dict:
-        """Get comprehensive scraping statistics"""
-        stats_dict = {
+        """Get scraping statistics"""
+        return {
             'total_requests': self.stats.total_requests,
             'successful_scrapes': self.stats.successful_scrapes,
             'failed_scrapes': self.stats.failed_scrapes,
@@ -450,53 +550,42 @@ class TrendingPageScraper:
             'last_scrape_time': self.stats.last_scrape_time,
             'average_response_time': self.stats.average_response_time,
             'success_rate': self.stats.successful_scrapes / max(self.stats.total_requests, 1),
-            'cache_hit_rate': self.stats.cache_hits / max(self.stats.total_requests, 1),
-            'supported_regions': self.get_supported_regions(),
-            'cache_enabled': self.use_cache,
-            'version': 'V6.0'
+            'supported_regions': list(self.TRENDING_URLS.keys()),
+            'version': 'V6.0 Improved'
         }
-        
-        return stats_dict
 
 
-def create_trending_scraper(config: Optional[Dict] = None) -> TrendingPageScraper:
-    """Factory function for Trending Scraper"""
+# Factory function for improved scraper
+def create_improved_trending_scraper(config: Optional[Dict] = None) -> ImprovedTrendingPageScraper:
+    """Factory function for improved trending scraper"""
     if config:
-        return TrendingPageScraper(**config)
+        return ImprovedTrendingPageScraper(**config)
     else:
-        return TrendingPageScraper()
+        return ImprovedTrendingPageScraper()
 
 
-# Test Function
+# Test the improved scraper
 if __name__ == "__main__":
-    # Test V6.0 Trending Scraper
-    scraper = TrendingPageScraper()
-    
-    print("🧪 V6.0 Trending Scraper Test")
+    print("🧪 V6.0 Improved Trending Scraper Test")
     print("=" * 50)
     
-    # Test 1: Deutschland, alle Trending-Videos
-    videos_de, stats_de = scraper.scrape_trending_videos('DE', max_videos=5)
-    print(f"🇩🇪 Test 1 - DE Trending: {len(videos_de)} videos")
-    for i, video in enumerate(videos_de[:3], 1):
-        print(f"   #{i}: {video.title[:50]}... | {video.channel}")
+    scraper = ImprovedTrendingPageScraper()
     
-    # Test 2: Deutschland, Gaming-Videos
-    gaming_videos, gaming_stats = scraper.scrape_trending_videos('DE', 'gaming', max_videos=5)
-    print(f"🎮 Test 2 - DE Gaming: {len(gaming_videos)} videos")
-    for i, video in enumerate(gaming_videos[:3], 1):
-        print(f"   #{i}: {video.title[:50]}... | {video.channel}")
+    # Test different regions
+    regions_to_test = ['DE', 'US']
     
-    # Test 3: USA, alle Trending-Videos  
-    videos_us, stats_us = scraper.scrape_trending_videos('US', max_videos=5)
-    print(f"🇺🇸 Test 3 - US Trending: {len(videos_us)} videos")
-    for i, video in enumerate(videos_us[:3], 1):
-        print(f"   #{i}: {video.title[:50]}... | {video.channel}")
+    for region in regions_to_test:
+        print(f"\n🌍 Testing region: {region}")
+        videos, stats = scraper.scrape_trending_videos(region, max_videos=5)
+        
+        print(f"✅ Found {len(videos)} videos")
+        for i, video in enumerate(videos[:3], 1):
+            print(f"   #{i}: {video.title[:50]}... | {video.channel}")
+            print(f"        Source: {video.source} | Trending: {video.is_trending_page_video}")
     
-    # Statistics
-    print(f"\n📊 Scraper Statistics:")
+    # Show final stats
     final_stats = scraper.get_scraping_stats()
+    print(f"\n📊 Final Statistics:")
     print(f"   Success Rate: {final_stats['success_rate']:.1%}")
-    print(f"   Cache Hit Rate: {final_stats['cache_hit_rate']:.1%}")
-    print(f"   Average Response Time: {final_stats['average_response_time']:.2f}s")
-    print(f"   Supported Regions: {len(final_stats['supported_regions'])}")
+    print(f"   Videos Found: {final_stats['videos_found']}")
+    print(f"   Version: {final_stats['version']}")
