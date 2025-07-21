@@ -9,7 +9,7 @@ V6.0 Server Update - Integration des verbesserten Trending Scrapers
 # from core.trending_scraper import TrendingPageScraper, create_trending_scraper
 
 # NEUE VERSION:
-from core.trending_scraper_fixed import ImprovedTrendingPageScraper, create_improved_trending_scraper
+from core.trending_hybrid_v6 import DeployReadyHybridAnalyzer, create_trending_scraper
 
 class V6TrendingAnalyzer:
     """V6.0 Main Analyzer mit verbessertem Scraper"""
@@ -29,7 +29,7 @@ class V6TrendingAnalyzer:
         self.regional_filter = create_regional_filter(target_region, filter_config)
         
         # 🔧 VERWENDE DEN VERBESSERTEN SCRAPER:
-        self.trending_scraper = create_improved_trending_scraper(scraper_config)
+        self.trending_scraper = DeployReadyHybridAnalyzer()
         
         # Enhanced statistics
         self.analysis_stats = {
