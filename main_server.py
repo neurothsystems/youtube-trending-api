@@ -1,12 +1,21 @@
-# main_server_updated.py - V6.0 Server mit verbessertem Scraper
-"""
-V6.0 Server Update - Integration des verbesserten Trending Scrapers
-"""
+# main_server.py - IMPORT FIX
+# FÜGE DIESE ZEILE GANZ OBEN HINZU (nach den anderen Imports):
 
-# In der V6TrendingAnalyzer Klasse, ersetze den Scraper-Import:
+import http.server
+import socketserver
+import json
+import urllib.parse
+import time
+import os
+import configparser
+from datetime import datetime
+from typing import Dict, Any, List, Optional  # ✅ DIESER IMPORT FEHLT!
+from collections import defaultdict
 
-# ALTE VERSION (Zeile ~15):
-# from core.trending_scraper import TrendingPageScraper, create_trending_scraper
+# V6.0 Core Modules
+from core.momentum_algorithm import MomentumAlgorithm, VideoData, TrendingResult, create_momentum_algorithm
+from core.regional_filters import RegionalFilter, create_regional_filter
+from core.trending_hybrid_v6 import DeployReadyHybridAnalyzer, create_trending_scraper
 
 # NEUE VERSION:
 from core.trending_hybrid_v6 import DeployReadyHybridAnalyzer, create_trending_scraper
